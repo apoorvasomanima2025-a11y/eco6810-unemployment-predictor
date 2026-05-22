@@ -1,0 +1,7 @@
+{
+  "metric_name": "replace_me_baseline",
+  "value": 0.0,
+  "unit": "replace_me_unit",
+  "notes": "Template value. Replace this with your real baseline before the milestone.",
+  "is_template": true
+}

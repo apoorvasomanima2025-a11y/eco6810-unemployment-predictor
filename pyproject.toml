@@ -1,0 +1,13 @@
+[project]
+name = "eco6810-project-template"
+version = "0.1.0"
+description = "Starter scaffold for the ECO6810 final project"
+requires-python = ">=3.11"
+dependencies = [
+    "numpy>=1.24",
+    "pandas>=2.0",
+    "requests>=2.31",
+]
+
+[tool.uv]
+dev-dependencies = []

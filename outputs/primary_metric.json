@@ -1,0 +1,8 @@
+{
+  "metric_name": "replace_me_primary",
+  "value": 0.0,
+  "threshold": 0.0,
+  "passed": false,
+  "notes": "Template value. Replace this with your real project metric before the final submission.",
+  "is_template": true
+}

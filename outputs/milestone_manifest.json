@@ -1,0 +1,15 @@
+{
+  "charter_locked": false,
+  "sources": [
+    {
+      "name": "replace_me_source",
+      "status": "blocked",
+      "probe_artifact": "artifacts/probes/replace_me_probe.md",
+      "note": "Replace this with a real one-row or one-response source probe."
+    }
+  ],
+  "baseline_ready": false,
+  "primary_metric_schema_ready": true,
+  "run_command": "uv run main.py",
+  "template_warning": "This scaffold runs, but it is not submission-ready until you replace the placeholders."
+}
