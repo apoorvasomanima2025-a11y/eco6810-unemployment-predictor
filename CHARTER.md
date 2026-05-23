@@ -92,7 +92,7 @@ State **what the baseline produces numerically** if you know it, or how you will
 
 *Write here:*
 
----
+The baseline model will predict the mean CO₂ emissions per capita for all observations in the training dataset, regardless of GDP per capita, urbanization, or industrial output. The baseline model's out-of-sample R² is expected to be approximately 0.00, and the exact value will be computed before building the predictive model using the training data.
 
 ## 5. Falsifiable hypothesis
 
