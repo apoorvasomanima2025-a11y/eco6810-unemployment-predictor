@@ -56,10 +56,10 @@ The single number your project centres on. State:
 Only one main outcome. Secondary outcomes go under "Scope limits" as things you *may* report but will not be graded on.
 
 *Write here:*
-|Name of variable:| CO₂ emissions per capita|
-|Unit:| Metric tons of CO₂ per person|
-|Source table/column/field: | World Bank indicator EN.ATM.CO2E.PC (CO₂ emissions, metric tons per capita)|
-|Population / panel: | Worldwide country-year panel data from approximately 2004–2023, where each row represents a country observed in a specific year.|
+| Name of variable: | CO₂ emissions per capita |
+| Unit: | Metric tons of CO₂ per person |
+| Source table/column/field: | World Bank indicator EN.ATM.CO2E.PC (CO₂ emissions, metric tons per capita) | 
+| Population / panel: | Worldwide country-year panel data from approximately 2004–2023, where each row represents a country observed in a specific year.|
 
 
 ## 3. Main quantitative success threshold
@@ -95,7 +95,7 @@ The baseline model will predict the mean CO₂ emissions per capita for all obse
 One sentence the data can prove wrong. A sign, a threshold, or a rank ordering. Not "we will analyse X" — "X will be greater than Y by at least Z".
 
 *Write here:*
-Countries in the highest income quartile will have CO₂ emissions per capita at least 2 metric tons higher than countries in the lowest income quartile.
+Countries in the middle income quartile (Q2 or Q3) will have CO₂ emissions per capita at least 1.5 metric tons higher than countries in the lowest income quartile (Q1), and countries in the highest income quartile (Q4) will have CO₂ emissions per capita no higher than those in Q3 — consistent with an inverted-U relationship.
 
 ## 6. Data sources and access plan
 
