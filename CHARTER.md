@@ -42,7 +42,7 @@ One paragraph. Who is the specific person, institution, or policy body that woul
 
 *Write here:*
 
----
+The stakeholder for this project could be the Ministry of Environment, Forest and Climate Change working together with the NITI Aayog while designing future development and climate strategies. These institutions would care whether rising income levels are associated with higher pollution because the findings can inform decisions on balancing economic expansion with environmental sustainability. If the analysis shows that growth initially increases emissions but later slows or reduces them, it could influence decisions on green investment incentives, industrial regulations, and the allocation of funding toward cleaner technologies in future development plans.
 
 ## 2. Main outcome variable
 
