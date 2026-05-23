@@ -99,8 +99,7 @@ The baseline model will predict the mean CO₂ emissions per capita for all obse
 One sentence the data can prove wrong. A sign, a threshold, or a rank ordering. Not "we will analyse X" — "X will be greater than Y by at least Z".
 
 *Write here:*
-
----
+Countries in the highest income quartile will have CO₂ emissions per capita at least 2 metric tons higher than countries in the lowest income quartile.
 
 ## 6. Data sources and access plan
 
