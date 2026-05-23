@@ -77,7 +77,7 @@ A single numeric bar. Your project is a success if the delivered metric crosses 
 If you cannot write a number, you do not yet have a project — you have a topic. Go back to Section 2.
 
 *Write here:*
-
+Predictive: Out-of-sample R² on a held-out test sample (20% of worldwide country-year observations from 2000–2023) is at least 0.50, versus a baseline model R² of 0.00.
 ---
 
 ## 4. Baseline to beat
