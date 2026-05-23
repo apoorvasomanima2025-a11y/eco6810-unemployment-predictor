@@ -27,7 +27,7 @@
 | Field | Value |
 |---|---|
 | Team members | Apoorva Somani|
-| Project type |  descriptive |
+| Project type |  Predictive|
 | Estimated hours per person | 60 |
 | Charter version | v1 |
 | Date | 2026-05-23|
@@ -56,14 +56,10 @@ The single number your project centres on. State:
 Only one main outcome. Secondary outcomes go under "Scope limits" as things you *may* report but will not be graded on.
 
 *Write here:*
-Name of variable:
-CO₂ emissions per capita
-Unit:
-Metric tons of CO₂ per person
-Source table/column/field:
-World Bank indicator EN.ATM.CO2E.PC (CO₂ emissions, metric tons per capita)
-Population / panel:
-Worldwide country-year panel data from approximately 2004–2023, where each row represents a country observed in a specific year.
+|Name of variable:| CO₂ emissions per capita|
+|Unit:| Metric tons of CO₂ per person|
+|Source table/column/field: | World Bank indicator EN.ATM.CO2E.PC (CO₂ emissions, metric tons per capita)|
+|Population / panel: | Worldwide country-year panel data from approximately 2004–2023, where each row represents a country observed in a specific year.|
 
 
 ## 3. Main quantitative success threshold
