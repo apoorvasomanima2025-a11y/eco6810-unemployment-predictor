@@ -114,7 +114,26 @@ If any source requires manual scraping, permissions, or a login you do not yet h
 
 *Write here:*
 
----
+Source 1: World Bank Open Data
+Name and URL/API endpoint:
+World Bank Open Data
+API endpoint:
+https://api.worldbank.org/v2/country/all/indicator/{indicator}?format=json
+Licence or permission to use:
+Open data for public use under the World Bank Open Data terms.
+Access method:
+Direct API call using Python requests or wbdata package.
+Probe script (prints one row):
+import requests
+import pandas as pd
+
+url = "https://api.worldbank.org/v2/country/all/indicator/EN.ATM.CO2E.PC?format=json&per_page=5"
+
+response = requests.get(url)
+data = response.json()
+
+df = pd.json_normalize(data[1])
+print(df[['country.value','date','value']].head(1))
 
 ## 7. Scope limits
 
