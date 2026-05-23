@@ -146,8 +146,14 @@ Bullet list of things you are **not** claiming and **not** responsible for. Exam
 This section protects you at grading time. If you clearly say "we are not doing X," you will not be graded on X.
 
 *Write here:*
-
----
+We will not estimate a causal effect of economic growth on pollution; the project studies predictive relationships and associations only.
+We will not evaluate the impact of specific environmental policies or regulations on emissions.
+We will not forecast future global CO₂ emissions beyond the available data period.
+We will not harmonize missing or inconsistent country definitions across multiple external databases; analysis will use the World Bank country classifications.
+We will not build a web application or public user interface for predictions.
+We will not include other environmental outcomes such as methane emissions, biodiversity loss, or air quality indices as primary outcomes.
+We will not claim that GDP growth alone determines environmental degradation; other omitted economic and institutional factors may also matter.
+We will not make country-level policy recommendations outside the evidence directly supported by the data.
 
 ## 8. Risks and fallback
 
@@ -159,8 +165,8 @@ One named failure mode, and the fallback analysis you will run if it materialise
 One risk is enough. Two is fine. Zero means you have not thought hard enough.
 
 *Write here:*
-
----
+Failure mode: If World Bank data contains substantial missing values for CO₂ emissions or economic indicators across countries and years, resulting in an incomplete worldwide panel dataset, we will restrict the analysis to countries with complete observations for the selected period and document the reduction in sample size.
+Fallback analysis: We will run the prediction model on the balanced subset of countries with complete data and report results alongside descriptive statistics comparing the reduced sample with the original dataset.
 
 ## 9. Reproducibility checklist
 
@@ -174,10 +180,16 @@ Your final repo must satisfy all of these:
 
 If you cannot commit to this, your project is probably still too broad. Talk to the instructor before proceeding.
 
----
+ uv run main.py will run end-to-end in under 10 minutes on a clean machine with no manual intervention.
+ outputs/primary_metric.json will contain a single JSON object with:
+{"metric_name":"Out-of-sample R²","value":0.00,"threshold":0.50,"passed":false}
+ outputs/baseline_metric.json will contain a single JSON object with:
+{"metric_name":"Baseline Out-of-sample R²","value":0.00,"threshold":0.00,"passed":true}
+ README.md will document the commands and expected outputs in ≤20 lines.
+ All data sources will be fetched directly through the World Bank API or committed under data/ with accompanying licence notes.
 
 ## Sign-off
 
 By submitting this charter, the team agrees that this is the plan the project will be graded against. The instructor will not penalize you just because the topic turns out to be difficult, as long as the project stays honest and within the approved scope.
 
-*Signed:* _(team member names)_
+*Signed:* Apoorva Somani 
