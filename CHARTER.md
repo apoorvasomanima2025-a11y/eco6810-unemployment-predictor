@@ -42,7 +42,7 @@ One paragraph. Who is the specific person, institution, or policy body that woul
 
 *Write here:*
 
-The stakeholder for this project could be the Ministry of Environment, Forest and Climate Change working together with the NITI Aayog while designing future development and climate strategies. These institutions would care whether rising income levels are associated with higher pollution because the findings can inform decisions on balancing economic expansion with environmental sustainability. If the analysis shows that growth initially increases emissions but later slows or reduces them, it could influence decisions on green investment incentives, industrial regulations, and the allocation of funding toward cleaner technologies in future development plans.
+The primary stakeholder is the International Labour Organization (ILO) Employment Policy Department, specifically its analysts who advise member governments on labour market intervention. When a country's macroeconomic conditions shift — GDP contracts, FDI dries up, or urbanisation accelerates — finance ministries need to anticipate unemployment pressure before it shows up in quarterly surveys, so they can pre-emptively activate job guarantee schemes, training budgets, or unemployment insurance. This project asks whether a country's unemployment rate in a given year can be reliably predicted from its macroeconomic indicators in that same year, giving policymakers a cross-country benchmark to flag when a country's observed unemployment is anomalously high or low relative to what its macro fundamentals would predict.
 
 ## 2. Main outcome variable
 
@@ -56,11 +56,10 @@ The single number your project centres on. State:
 Only one main outcome. Secondary outcomes go under "Scope limits" as things you *may* report but will not be graded on.
 
 *Write here:*
-| Name of variable: | CO₂ emissions per capita |
-| Unit: | Metric tons of CO₂ per person |
-| Source table/column/field: | World Bank indicator EN.ATM.CO2E.PC (CO₂ emissions, metric tons per capita) | 
-| Population / panel: | Worldwide country-year panel data from approximately 2004–2023, where each row represents a country observed in a specific year.|
-
+Name: Unemployment rate, total
+Unit: Percentage of total labour force (%)
+Source indicator code: SL.UEM.TOTL.ZS — fetchable via the World Bank API
+Population / panel: Worldwide country-year panel, approximately 180 countries × years 2000–2023, where each row is one country observed in one year. 
 
 ## 3. Main quantitative success threshold
 
@@ -73,7 +72,8 @@ A single numeric bar. Your project is a success if the delivered metric crosses 
 If you cannot write a number, you do not yet have a project — you have a topic. Go back to Section 2.
 
 *Write here:*
-Predictive: Out-of-sample R² on a held-out test sample (20% of worldwide country-year observations from 2000–2023) is at least 0.50, versus a baseline model R² of 0.00.
+Predictive: Out-of-sample R² on a randomly held-out test set (20% of all country-year observations from 2000–2023) is at least 0.45, versus a baseline model R² of approximately 0.00.
+This threshold is deliberately modest — an R² of 0.45 means the model explains nearly half the cross-country variation in unemployment using only macro indicators, which would be a meaningful and publishable empirical result.
 ---
 
 ## 4. Baseline to beat
@@ -88,14 +88,18 @@ State **what the baseline produces numerically** if you know it, or how you will
 
 *Write here:*
 
-The baseline model will predict the mean CO₂ emissions per capita for all observations in the training dataset, regardless of GDP per capita, urbanization, or industrial output. The baseline model's out-of-sample R² is expected to be approximately 0.00, and the exact value will be computed before building the predictive model using the training data.
+The baseline model predicts the global mean unemployment rate (computed on the training set) for every country-year observation in the test set, regardless of GDP, FDI, urbanisation, or any other predictor. This is a zero-information forecast.
+
+Expected baseline out-of-sample R²: ≈ 0.00 (by construction of the mean-prediction baseline)
+The exact value will be computed and written to outputs/baseline_metric.json before any regression or machine learning model is built.
 
 ## 5. Falsifiable hypothesis
 
 One sentence the data can prove wrong. A sign, a threshold, or a rank ordering. Not "we will analyse X" — "X will be greater than Y by at least Z".
 
 *Write here:*
-Countries in the middle income quartile (Q2 or Q3) will have CO₂ emissions per capita at least 1.5 metric tons higher than countries in the lowest income quartile (Q1), and countries in the highest income quartile (Q4) will have CO₂ emissions per capita no higher than those in Q3 — consistent with an inverted-U relationship.
+Countries with GDP per capita growth above the global median in a given year will have unemployment rates at least 1.5 percentage points lower than countries with GDP per capita growth below the global median in that same year, after controlling for year fixed effects.
+This is a directional, threshold-based, falsifiable claim grounded in Okun's Law — the well-established empirical relationship between output growth and unemployment. If the data show a difference smaller than 1.5 pp, or the wrong sign, the hypothesis is falsified.
 
 ## 6. Data sources and access plan
 
@@ -110,26 +114,28 @@ If any source requires manual scraping, permissions, or a login you do not yet h
 
 *Write here:*
 
-Source 1: World Bank Open Data
-Name and URL/API endpoint:
-World Bank Open Data
-API endpoint:
-https://api.worldbank.org/v2/country/all/indicator/{indicator}?format=json
-Licence or permission to use:
-Open data for public use under the World Bank Open Data terms.
-Access method:
-Direct API call using Python requests or wbdata package.
-Probe script (prints one row):
-import requests
-import pandas as pd
+All indicators below are available  under the World Bank's open data terms.
+Unemployment rateSL.UEM.TOTL.ZS
+GDP growth (annual %)NY.GDP.MKTP.KD.ZG
+GDP per capita (current USD)NY.GDP.PCAP.CD
+Inflation, consumer pricesFP.CPI.TOTL.ZG
+Trade openness (% of GDP)NE.TRD.GNFS.ZS
+Labour force participation rateSL.TLF.ACTI.ZS
+FDI net inflows (BoP, USD)BX.KLT.DINV.CD.WD
+Urban population (% of total)SP.URB.TOTL.IN.ZS
 
-url = "https://api.worldbank.org/v2/country/all/indicator/EN.ATM.CO2E.PC?format=json&per_page=5"
+Probe script (fetches one row, prints it):
+pythonimport requests, pandas as pd
 
-response = requests.get(url)
-data = response.json()
+BASE = "https://api.worldbank.org/v2/country/all/indicator/"
+indicator = "SL.UEM.TOTL.ZS"
+url = f"{BASE}{indicator}?format=json&per_page=5&mrv=1"
 
+r = requests.get(url)
+data = r.json()
 df = pd.json_normalize(data[1])
-print(df[['country.value','date','value']].head(1))
+print(df[["country.value", "date", "value"]].head(1))
+Access method: direct unauthenticated API call. No login, no scraping, no manual download needed.
 
 ## 7. Scope limits
 
@@ -142,14 +148,15 @@ Bullet list of things you are **not** claiming and **not** responsible for. Exam
 This section protects you at grading time. If you clearly say "we are not doing X," you will not be graded on X.
 
 *Write here:*
-We will not estimate a causal effect of economic growth on pollution; the project studies predictive relationships and associations only.
-We will not evaluate the impact of specific environmental policies or regulations on emissions.
-We will not forecast future global CO₂ emissions beyond the available data period.
-We will not harmonize missing or inconsistent country definitions across multiple external databases; analysis will use the World Bank country classifications.
-We will not build a web application or public user interface for predictions.
-We will not include other environmental outcomes such as methane emissions, biodiversity loss, or air quality indices as primary outcomes.
-We will not claim that GDP growth alone determines environmental degradation; other omitted economic and institutional factors may also matter.
-We will not make country-level policy recommendations outside the evidence directly supported by the data.
+We will not estimate a causal effect of any macroeconomic variable on unemployment; all relationships are predictive associations only.
+We will not model country-specific time-series dynamics (no VAR, no ARIMA, no country-level AR(1)); the unit of analysis is the cross-sectional country-year observation.
+We will not harmonise or adjust for differences in how countries measure unemployment (ILO vs. national definitions); we use the World Bank's modelled ILO estimate as-is.
+We will not include high-frequency or quarterly data; the panel is annual.
+We will not forecast future unemployment beyond the 2000–2023 data window.
+We will not produce a web application, dashboard, or public-facing interface.
+We will not analyse informal-sector employment, underemployment, or youth unemployment as primary outcomes; those may be reported descriptively but are not graded outcomes.
+We will not make country-specific policy recommendations beyond what the cross-country evidence directly supports.
+We will not claim that the selected macro indicators are the only or primary determinants of unemployment; institutional, political, and structural factors are acknowledged but excluded.
 
 ## 8. Risks and fallback
 
@@ -161,8 +168,8 @@ One named failure mode, and the fallback analysis you will run if it materialise
 One risk is enough. Two is fine. Zero means you have not thought hard enough.
 
 *Write here:*
-Failure mode: If World Bank data contains substantial missing values for CO₂ emissions or economic indicators across countries and years, resulting in an incomplete worldwide panel dataset, we will restrict the analysis to countries with complete observations for the selected period and document the reduction in sample size.
-Fallback analysis: We will run the prediction model on the balanced subset of countries with complete data and report results alongside descriptive statistics comparing the reduced sample with the original dataset.
+Failure mode: The World Bank API returns substantial missing values for inflation (FP.CPI.TOTL.ZG) or trade openness (NE.TRD.GNFS.ZS) for low-income countries and small states, reducing the usable panel to fewer than 100 countries and degrading model performance below the 0.45 R² threshold.
+Fallback: Drop the two indicators with the most missingness and re-run the model on the remaining predictors (GDP growth, GDP per capita, labour force participation rate, and urbanisation), which have much better coverage in the World Bank data. Report both the full-feature and reduced-feature results side by side, document the sample size drop, and compare out-of-sample R² across both specifications. If the reduced model still fails the threshold, fall back to a descriptive analysis producing stratified unemployment estimates across GDP-per-capita quartiles with documented standard errors.
 
 ## 9. Reproducibility checklist
 
@@ -176,13 +183,18 @@ Your final repo must satisfy all of these:
 
 If you cannot commit to this, your project is probably still too broad. Talk to the instructor before proceeding.
 
- uv run main.py will run end-to-end in under 10 minutes on a clean machine with no manual intervention.
- outputs/primary_metric.json will contain a single JSON object with:
-{"metric_name":"Out-of-sample R²","value":0.00,"threshold":0.50,"passed":false}
- outputs/baseline_metric.json will contain a single JSON object with:
-{"metric_name":"Baseline Out-of-sample R²","value":0.00,"threshold":0.00,"passed":true}
- README.md will document the commands and expected outputs in ≤20 lines.
- All data sources will be fetched directly through the World Bank API or committed under data/ with accompanying licence notes.
+ uv run main.py will fetch all data from the World Bank API, merge indicators, split 80/20 train/test, fit the baseline and primary models, and write outputs — end-to-end in under 10 minutes on a clean machine.
+outputs/primary_metric.json will contain:
+
+json{"metric_name": "Out-of-sample R²", "value": 0.00, "threshold": 0.45, "passed": false}
+(placeholder — real value computed at runtime)
+
+outputs/baseline_metric.json will contain:
+
+json{"metric_name": "Baseline Out-of-sample R²", "value": 0.00, "threshold": 0.00, "passed": true}
+
+README.md will document the single command (uv run main.py) and list the five expected output files in under 20 lines.
+All data is fetched in-script from the World Bank API at runtime. No manual downloads required. A data/ folder with a LICENSE.txt noting World Bank open data terms will be committed for reference.
 
 ## Sign-off
 
