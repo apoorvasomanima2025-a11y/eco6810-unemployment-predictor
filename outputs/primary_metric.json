@@ -1,8 +1,11 @@
 {
-  "metric_name": "replace_me_primary",
-  "value": 0.0,
-  "threshold": 0.0,
-  "passed": false,
-  "notes": "Template value. Replace this with your real project metric before the final submission.",
-  "is_template": true
+  "metric_name": "Out-of-sample R\u00b2",
+  "value": 0.549109,
+  "threshold": 0.45,
+  "passed": true,
+  "model": "Random Forest",
+  "mae_pp": 2.7701,
+  "rmse_pp": 3.9289,
+  "n_train": 3486,
+  "n_test": 872
 }
