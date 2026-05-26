@@ -25,16 +25,22 @@ Source: World Bank World Development Indicators (WDI), downloaded 2026-04-08.
 Access method: Direct bulk download as data/Book.xlsx; no API call or login required at runtime. The file is committed to the repo under data/ with a CC BY 4.0 licence note.
 Seven indicators were used:
 
-Sheet               Indicator                                 WB Code
-Unemployment  Unemployment rate, total (% of labour force)  SL.UEM.TOTL.ZS
-GDP Per Cap   GDP per capita (current USD)                  NY.GDP.PCAP.CD
-Inflation     CPI inflation (annual %)                      FP.CPI.TOTL.ZG
-Trade         Trade openness (% of GDP)                     NE.TRD.GNFS.ZS        FDI           FDI net inflows (BoP, current USD)            BX.KLT.DINV.CD.WD Labour Force  Labour force participation rate (%)S          L.TLF.ACTI.ZS    Urban Pop     Urban population (% of total)                 SP.URB.TOTL.IN.Z
-
+ Sheet                Indicator                                     WB Code 
+ - Unemployment     Unemployment rate, total (% of labour force)  SL.UEM.TOTL.ZS
+ - GDP Per Cap      GDP per capita growth (annual %)             NY.GDP.PCAP.CD 
+ - Inflation       CPI inflation (annual %)                      FP.CPI.TOTL.ZG 
+ - Trade           Trade openness (% of G                        NE.TRD.GNFS.ZS
+ - FDI             FDI net inflows (BoP, current USD)           BX.KLT.DINV.CD.WD
+ - Labour Force    Labour force participation rate (%)           SL.TLF.ACTI.ZS  
+ - Urban Pop        Urban population (% of total)                SP.URB.TOTL.IN.Z 
+ - School           School enrollment, tertiary (% gross)        SE.TER.ENRR
+ - Population Total  Population growth (annual %)                SP.POP.GROW
+ - Industry          Industry value added (% of GDP)             NV.IND.TOTL.ZS
+   
 gdp_per_capita_growth (the variable in the falsifiable hypothesis) is derived in code as the year-on-year percentage change of gdp_per_capita within each country — it is not fetched separately.
-No source failed. All seven sheets were present and parseable in the downloaded file. World Bank aggregate and regional rows (e.g. WLD, HIC, SSA) were excluded using a fixed exclusion list; only sovereign country rows were retained.
-Panel after cleaning: 4,358 country-year observations across 185 countries, 2000–2023.
-126 rows dropped for having more than 2 missing features. Remaining missing values (at most 438 in a single column) were filled with the column's global median before modelling.
+No source failed. All ten sheets were present and parseable in the downloaded file. World Bank aggregate and regional rows (e.g. WLD, HIC, SSA) were excluded using a fixed exclusion list; only sovereign country rows were retained.
+Panel after cleaning: 4,369 country-year observations across 185 countries, 2000–2023.
+115 rows dropped for having more than 2 missing features. Remaining missing values (at most 438 in a single column) were filled with the column's global median before modelling.
 
 ## 4. Method
 
@@ -46,22 +52,25 @@ Main analysis
 The panel was split 80/20 into train (3,486 obs) and test (872 obs) sets using a random split with seed 42. The split is across country-year observations, not along a time boundary, so the test set contains real country-years the model has never seen.
 Three candidate models were evaluated by 5-fold cross-validation on the training set:
 
-Model                   CV R² (mean ± std)                                        Ridge Regression        0.170 ± 0.018                                      Gradient Boosting       0.468 ± 0.029Random                                  Forest                  0.508 ± 0.028
+- Model                   CV R² (mean ± std)
+-  Ridge Regression        0.170 ± 0.018
+-  Gradient Boosting       0.468 ± 0.029Random
+-  Forest                  0.508 ± 0.028
 
 Random Forest was selected as the best model. It was then re-trained on the full training set and evaluated once on the held-out test set to produce the primary metric.
 FDI inflows were sign-log transformed before modelling (signed log₁p) to handle the heavy right skew and occasional negative values from FDI reversals. All other features were used as-is after median imputation.
 ## 5. Result
 
-- Main metric value: Out-of-sample R²0.549
+- Main metric value: Out-of-sample R²0.5139
 - Threshold: 0.45
 - Passed: Yes
-- MAE:  2.77 percentage points
-- RMSE: 3.93 percentage points
-- Baseline R² : −0.001
+- MAE:  2.827 percentage points
+- RMSE: 4.008 percentage points
+- Baseline R² : −0.0002
 
 Give the main number first. Then interpret it in plain English.
 The Random Forest model explains approximately 55% of the cross-country variation in unemployment rates on data it was never trained on. In practical terms, the model's average prediction error is 2.77 percentage points — so for a country with a true unemployment rate of 8%, a typical prediction lands between 5.2% and 10.8%. That is meaningful accuracy given that the features include no country fixed effects and no historical unemployment lags.
-The improvement over baseline is large and unambiguous: the baseline R² is essentially zero (−0.001), while the model R² is 0.549.
+The improvement over baseline is large and unambiguous: the baseline R² is essentially zero (−0.0002), while the model R² is 0.5139.
 
 ## 6. Evidence
 
@@ -75,10 +84,10 @@ Figure 3 — Feature importance (outputs/figures/feature_importance.png)
 The two dominant features are labour force participation rate (37.8%) and urban population share (31.7%). Trade openness (13.7%) is third. GDP per capita level (2.9%) and growth (1.7%) carry relatively little weight. Inflation and FDI together account for 12.2%.
 Table 1 — Stratified unemployment by GDP per capita quartile
 
-GDP per capita quartile    n      Mean   unemployment (%)SE                         Q1 (lowest)             1,090   8.51     0.19         
-  Q2                      1,093   7.52     0.17
-  Q3                      1,085   7.99     0.19
-  Q4 (highest)            1,090   7.91     0.18
+- GDP per capita quartile    n      Mean   unemployment (%)SE                     - Q1 (lowest)             1,093   8.51     0.19
+- Q2                      1,101   7.52     0.17
+- Q3                      1,083   7.99     0.19
+- Q4 (highest)            1,090   7.91     0.18
 Standard errors are documented for all four strata as required by the descriptive component of the charter.
 
 ## 7. Limits
@@ -102,7 +111,7 @@ The model was not tested on data beyond 2023. Application to 2024+ data would re
 
 Say so directly. Do not force a story onto the data.
 
-The primary metric passed (R² = 0.549 ≥ 0.45), so the predictive result is not null.
+The primary metric passed (R² = 0.5139 ≥ 0.45), so the predictive result is not null.
 However, the falsifiable hypothesis was not supported. The charter predicted that countries with above-median GDP per capita growth would have unemployment rates at least 1.5 percentage points lower than countries with below-median growth. The actual difference was 0.04 percentage points — essentially zero.
 This is reported directly and without adjustment.
 The most likely explanation is a data artefact in the derived variable: the median of gdp_per_capita_growth across the full panel is −31.6%, which is unusually negative and suggests that the pct_change derivation produced extreme values for countries with structural GDP revisions, currency rebasings, or first-year observations where the prior year is missing. The binary median split therefore did not meaningfully separate high-growth from low-growth country-years. The overall model still predicts well, but the specific Okun's Law hypothesis — as tested here — is not supported by this data and this derivation approach. A cleaner test would winsorise the growth variable or exclude the first observation per country before computing the median split.
