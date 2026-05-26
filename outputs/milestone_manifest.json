@@ -1,15 +1,79 @@
 {
-  "charter_locked": false,
-  "sources": [
+  "project_title": "Can Macroeconomic Indicators Predict Unemployment Rates?",
+  "author": "Apoorva Somani",
+  "course": "ECO 6810",
+  "status": "complete",
+  "data_source": "World Bank WDI \u2014 data/Book.xlsx (downloaded 2026-04-08)",
+  "data_note": "gdp_per_capita_growth derived as YoY pct_change of gdp_per_capita within each country",
+  "year_range": [
+    2000,
+    2023
+  ],
+  "n_countries": 185,
+  "n_obs_total": 4358,
+  "n_train": 3486,
+  "n_test": 872,
+  "features": [
+    "gdp_per_capita",
+    "gdp_per_capita_growth",
+    "inflation",
+    "trade_openness",
+    "fdi_inflows",
+    "labor_force_part",
+    "urban_population_pct"
+  ],
+  "best_model": "Random Forest",
+  "primary_r2": 0.549109,
+  "baseline_r2": -0.000878,
+  "threshold": 0.45,
+  "passed": true,
+  "mae_pp": 2.7701,
+  "rmse_pp": 3.9289,
+  "hypothesis": {
+    "median_gdppc_growth_pct": -31.5515,
+    "mean_unemp_below_median_pct": 8.0005,
+    "mean_unemp_above_median_pct": 7.9612,
+    "difference_pp": 0.0393,
+    "threshold_pp": 1.5,
+    "hypothesis_supported": false
+  },
+  "stratified_estimates": [
     {
-      "name": "replace_me_source",
-      "status": "blocked",
-      "probe_artifact": "artifacts/probes/replace_me_probe.md",
-      "note": "Replace this with a real one-row or one-response source probe."
+      "quartile": "Q1_lowest",
+      "n": 1090,
+      "mean_unemp_pct": 8.5057,
+      "std": 6.1241,
+      "se": 0.1855
+    },
+    {
+      "quartile": "Q2",
+      "n": 1093,
+      "mean_unemp_pct": 7.5169,
+      "std": 5.6,
+      "se": 0.1694
+    },
+    {
+      "quartile": "Q3",
+      "n": 1085,
+      "mean_unemp_pct": 7.9886,
+      "std": 6.1956,
+      "se": 0.1881
+    },
+    {
+      "quartile": "Q4_highest",
+      "n": 1090,
+      "mean_unemp_pct": 7.9101,
+      "std": 5.9159,
+      "se": 0.1792
     }
   ],
-  "baseline_ready": false,
-  "primary_metric_schema_ready": true,
-  "run_command": "uv run main.py",
-  "template_warning": "This scaffold runs, but it is not submission-ready until you replace the placeholders."
+  "feature_importance": {
+    "gdp_per_capita": 0.029134,
+    "gdp_per_capita_growth": 0.017289,
+    "inflation": 0.064888,
+    "trade_openness": 0.136961,
+    "fdi_inflows": 0.057278,
+    "labor_force_part": 0.377912,
+    "urban_population_pct": 0.316538
+  }
 }
