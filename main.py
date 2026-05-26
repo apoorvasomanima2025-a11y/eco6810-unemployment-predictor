@@ -4,7 +4,7 @@ ECO 6810 Final Project
 Title  : Can Macroeconomic Indicators Predict Unemployment Rates?
 Author : Apoorva Somani
 Run    : uv run main.py
-Data   : data/Book.xlsx  (World Bank World Development Indicators, downloaded 2026-04-08)
+Data   : data/Unemployment.xlsx  (World Bank World Development Indicators, downloaded 2026-04-08)
 
 Outputs
 -------
