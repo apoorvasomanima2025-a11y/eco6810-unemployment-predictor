@@ -1,7 +1,7 @@
 {
-  "metric_name": "replace_me_baseline",
-  "value": 0.0,
-  "unit": "replace_me_unit",
-  "notes": "Template value. Replace this with your real baseline before the milestone.",
-  "is_template": true
+  "metric_name": "Baseline Out-of-sample R\u00b2 (mean prediction)",
+  "value": -0.000878,
+  "threshold": 0.0,
+  "passed": true,
+  "baseline_prediction_pct": 8.0147
 }
