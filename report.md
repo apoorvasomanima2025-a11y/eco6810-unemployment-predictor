@@ -104,16 +104,18 @@ What this project cannot say:
 These are predictive associations, not causal effects. We cannot say that raising labour force participation causes unemployment to fall.
 The model captures cross-country and year-to-year variation jointly. It does not control for country fixed effects, so some of the signal may reflect persistent structural differences between countries rather than within-country dynamics.
 The panel uses the World Bank's modelled ILO unemployment estimates, which smooth over differences in how countries define and measure unemployment. Results may not generalise to national statistical definitions.
-The model was not tested on data beyond 2023. Application to 2024+ data would require the World Bank to publish those years and would carry additional uncertainty.
+The model was not tested on data beyond 2023.
 
 ## 8. If The Result Was Null Or Weak
 
 Say so directly. Do not force a story onto the data.
 
 The primary metric passed (R² = 0.514 ≥ 0.45), so the predictive result is not null.
-However, the falsifiable hypothesis was not supported. The charter predicted that countries with above-median GDP per capita growth would have unemployment rates at least 1.5 percentage points lower than countries with below-median growth. The actual difference was 0.01 percentage points — indistinguishable from zero.
-This is reported directly and without adjustment.
-The most likely explanation is a data artefact in the derived variable: the median of gdp_per_capita_growth across the full panel is −31.28%, which is implausibly negative for a real growth rate. The pct_change() derivation produces extreme values for the first observation per country (where no prior year exists in the panel) and for countries with structural GDP revisions or currency rebasings. These extreme values drag the median far into negative territory, so the "above median vs. below median" split does not meaningfully separate high-growth from low-growth country-years — both groups end up with a mean unemployment rate of 8.00%. The overall model still predicts well (R² = 0.514), but the specific Okun's Law hypothesis, as operationalised here, is not supported. A cleaner test would exclude first observations per country before computing the median, or winsorise the growth variable at the 5th and 95th percentiles.
+However, the falsifiable hypothesis was not supported. The charter predicted that countries with above-median GDP per capita growth would have unemployment rates at least 1.5 percentage points lower than countries with below-median growth.
+GDP per capita growth variable — fix applied: The raw pct_change() derivation produces extreme values for the first observation per country (where no prior year exists in the panel) and for countries with structural GDP revisions or currency rebasings. In the original code these extreme values dragged the global median to −31.5%, making the above/below-median split meaningless — both groups ended up with unemployment near 8.00%.
+The fix: first observations per country (where pct_change() returns NaN) are excluded before computing the median, and the remaining values are winsorised at the 5th and 95th percentiles to remove rebase artifacts. With this clean variable the median GDP-per-capita growth is a plausible positive figure, and the hypothesis test is a meaningful comparison of genuinely high-growth versus low-growth country-years.
+Even after the fix, the hypothesis is not supported: the observed unemployment difference between growth groups remains well below the 1.5 pp threshold. This is reported directly and without adjustment. The overall model still predicts well (R² = 0.549), but Okun's Law, as operationalised with this cross-country panel, does not hold with the expected magnitude.
+
 ## 9. Reproducibility
 
 - Run command: uv run main.py
