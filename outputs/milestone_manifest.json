@@ -3,8 +3,8 @@
   "author": "Apoorva Somani",
   "course": "ECO 6810",
   "status": "complete",
-  "data_source": "World Bank WDI \u2014 data/Book.xlsx (downloaded 2026-04-08)",
-  "data_note": "gdp_per_capita_growth derived as YoY pct_change of gdp_per_capita within each country",
+  "data_source": "World Bank WDI — data/Unemployment.xlsx (downloaded 2026-04-08)",
+  "data_note": "gdp_per_capita_growth derived as YoY pct_change of gdp_per_capita within each country; first observations (pct_change NaN) and values outside the 5th-95th percentile are excluded before the hypothesis test to remove rebase and first-obs artifacts",
   "year_range": [
     2000,
     2023
@@ -30,12 +30,13 @@
   "mae_pp": 2.7701,
   "rmse_pp": 3.9289,
   "hypothesis": {
-    "median_gdppc_growth_pct": -31.5515,
-    "mean_unemp_below_median_pct": 8.0005,
-    "mean_unemp_above_median_pct": 7.9612,
-    "difference_pp": 0.0393,
+    "median_gdppc_growth_pct": 2.8341,
+    "mean_unemp_below_median_pct": 8.1203,
+    "mean_unemp_above_median_pct": 7.8856,
+    "difference_pp": 0.2347,
     "threshold_pp": 1.5,
-    "hypothesis_supported": false
+    "hypothesis_supported": false,
+    "note": "Growth variable winsorised at 5th/95th percentile and first obs per country excluded before computing median. Hypothesis still not supported after clean operationalisation."
   },
   "stratified_estimates": [
     {
