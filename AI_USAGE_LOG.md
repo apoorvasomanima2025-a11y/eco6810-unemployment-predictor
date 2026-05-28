@@ -10,15 +10,14 @@ The point is not to confess that you used AI. Of course you used AI. The point i
 |---|---|---|---|
 | YYYY-MM-DD | Claude / ChatGPT / Gemini / Copilot / other | Drafted a data-cleaning function | Re-ran the code, checked the output on 20 rows, fixed one wrong column mapping |
 | 2026-05-24 | Claude | Task: Initial project scaffolding and data loading. Prompt summary: Asked Claude to write a function to parse a multi-sheet World Bank WDI Excel file into a tidy long-format panel, merging sheets on country_code and year. Output used: parse_sheet() and load_panel() functions (sections 1 of main.py). | Verification: Ran in Colab, printed row counts per sheet, confirmed against raw Excel file.|
-| 2026-05-26 | Claude | Task: Feature engineering and cleaning.
-Prompt summary: Asked Claude to add YoY pct_change() derivation for GDP growth, signed-log transform for FDI, median imputation, and a row-drop rule for observations missing more than 2 features. Output used: clean_and_engineer() function (section 2 of main.py).| Verification: Checked fill counts and final panel shape against printed console output.|
+| 2026-05-26 | Claude | Task: Feature engineering and cleaning. Prompt summary: Asked Claude to add YoY pct_change() derivation for GDP growth, signed-log transform for FDI, median imputation, and a row-drop rule for observations missing more than 2 features. Output used: clean_and_engineer() function (section 2 of main.py).| Verification: Checked fill counts and final panel shape against printed console output.|
 | 2026-05-27| Claude | Task: Model selection pipeline and cross-validation.
-Prompt summary: Asked Claude to set up a 5-fold CV loop over Ridge, Random Forest, and Gradient Boosting, selecting the best by mean CV R².
-Output used: CANDIDATES dict and select_best_model() function (section 4 of main.py).| Verification: CV scores were printed and match the values reported in the report.|
+Prompt summary: Asked Claude to set up a 5-fold CV loop over Ridge, Random Forest, and Gradient Boosting, selecting the best by mean CV R². Output used: CANDIDATES dict and select_best_model() function (section 4 of main.py).
+| Verification: CV scores were printed and match the values reported in the report.|
 | 2026-05-28| Claude | Task: Hypothesis test and stratified estimates.
-Prompt summary: Asked Claude to implement the above/below-median GDP growth split and the four-quartile descriptive table with standard errors. Output used: test_hypothesis() and stratified_estimates() (sections 6–7 of main.py). | Verification: Numbers checked against printed output; the implausible −31.5% median was noticed at this stage.|
-| 2026-05-29| Claude | Task: Plotting. Prompt summary: Asked Claude to write the four matplotlib figures (actual vs predicted, residuals, feature importance bar, quartile bar with error caps).
-Output used: save_plots() function (section 8 of main.py).| Verification: Figures inspected visually in Colab.|
+Prompt summary: Asked Claude to implement the above/below-median GDP growth split and the four-quartile descriptive table with standard errors. Output used: test_hypothesis() and stratified_estimates() (sections 6–7 of main.py). 
+| Verification: Numbers checked against printed output; the implausible −31.5% median was noticed at this stage.|
+| 2026-05-29| Claude | Task: Plotting. Prompt summary: Asked Claude to write the four matplotlib figures (actual vs predicted, residuals, feature importance bar, quartile bar with error caps). Output used: save_plots() function (section 8 of main.py).| Verification: Figures inspected visually in Colab.|
 | 2026-05-30| Claude | Task: JSON output writers and main() orchestration.
 Prompt summary: Asked Claude to write the JSON serialisation functions and wire up the full main() function. Output used: write_json() and main() (sections 9 and MAIN of main.py).| Verification: Output JSON files opened and values confirmed against console output.|
 | 2026-05-31| Claude | Task: JSON output writers and main() orchestration.
