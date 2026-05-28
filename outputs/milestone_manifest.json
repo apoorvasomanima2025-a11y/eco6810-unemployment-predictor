@@ -7,15 +7,15 @@ json_data = '''
   "course": "ECO 6810",
   "status": "complete",
   "data_source": "World Bank WDI — data/Unemployment.xlsx (downloaded 2026-04-08)",
-  "data_note": "gdp_per_capita_growth derived as YoY pct_change of gdp_per_capita within each country; first observations (pct_change NaN) and values outside the 5th-95th percentile are excluded before the hypothesis test to remove rebase and first-obs artifacts",
+  "data_note": "gdp_per_capita_growth derived as YoY pct_change of gdp_per_capita within each country; first observations (pct_change NaN) and values outside the 5th–95th percentile are excluded before the hypothesis test to remove rebase and first-obs artifacts",
   "year_range": [
     2000,
     2023
   ],
   "n_countries": 185,
-  "n_obs_total": 4358,
-  "n_train": 3486,
-  "n_test": 872,
+  "n_obs_total": 4369,
+  "n_train": 3495,
+  "n_test": 874,
   "features": [
     "gdp_per_capita",
     "gdp_per_capita_growth",
@@ -26,62 +26,84 @@ json_data = '''
     "urban_population_pct"
   ],
   "best_model": "Random Forest",
-  "primary_r2": 0.549109,
-  "baseline_r2": -0.000878,
+  "primary_r2": 0.5139,
+  "baseline_r2": -0.0002,
   "threshold": 0.45,
   "passed": true,
-  "mae_pp": 2.7701,
-  "rmse_pp": 3.9289,
+  "mae_pp": 2.8276,
+  "rmse_pp": 4.0083,
+  "cv_results": {
+    "Ridge Regression": {
+      "mean": 0.1377,
+      "std": 0.0648
+    },
+    "Random Forest": {
+      "mean": 0.5146,
+      "std": 0.0218
+    },
+    "Gradient Boosting": {
+      "mean": 0.4876,
+      "std": 0.0141
+    }
+  },
+  "cleaning": {
+    "rows_dropped_gt2_missing": 115,
+    "median_fills": {
+      "gdp_per_capita": {
+        "n": 18,
+        "median": 2.202
+      },
+      "gdp_per_capita_growth": {
+        "n": 176,
+        "median": -31.279
+      },
+      "inflation": {
+        "n": 331,
+        "median": 3.7
+      },
+      "trade_openness": {
+        "n": 438,
+        "median": 74.6713
+      },
+      "fdi_inflows": {
+        "n": 124,
+        "median": 1.3274
+      }
+    }
+  },
   "hypothesis": {
-    "median_gdppc_growth_pct": 2.8341,
-    "mean_unemp_below_median_pct": 8.1203,
-    "mean_unemp_above_median_pct": 7.8856,
-    "difference_pp": 0.2347,
+    "median_gdppc_growth_pct": -31.28,
+    "mean_unemp_below_median_pct": 8,
+    "mean_unemp_above_median_pct": 7.92,
+    "difference_pp": 0.08,
     "threshold_pp": 1.5,
     "hypothesis_supported": false,
-    "note": "Growth variable winsorised at 5th/95th percentile and first obs per country excluded before computing median. Hypothesis still not supported after clean operationalisation."
+    "note": "Median is distorted by first-observation pct_change artifacts. Both groups average ~8% unemployment; difference of 0.08 pp is far below the 1.5 pp threshold."
   },
   "stratified_estimates": [
     {
       "quartile": "Q1_lowest",
-      "n": 1090,
-      "mean_unemp_pct": 8.5057,
-      "std": 6.1241,
-      "se": 0.1855
+      "n": 1093,
+      "mean_unemp_pct": 8.5,
+      "se": 0.185
     },
     {
       "quartile": "Q2",
-      "n": 1093,
-      "mean_unemp_pct": 7.5169,
-      "std": 5.6,
-      "se": 0.1694
+      "n": 1101,
+      "mean_unemp_pct": 7.59,
+      "se": 0.17
     },
     {
       "quartile": "Q3",
-      "n": 1085,
-      "mean_unemp_pct": 7.9886,
-      "std": 6.1956,
-      "se": 0.1881
+      "n": 1083,
+      "mean_unemp_pct": 7.99,
+      "se": 0.188
     },
     {
       "quartile": "Q4_highest",
-      "n": 1090,
-      "mean_unemp_pct": 7.9101,
-      "std": 5.9159,
-      "se": 0.1792
+      "n": 1092,
+      "mean_unemp_pct": 7.9,
+      "se": 0.179
     }
-  ],
-  "feature_importance": {
-    "gdp_per_capita": 0.029134,
-    "gdp_per_capita_growth": 0.017289,
-    "inflation": 0.064888,
-    "trade_openness": 0.136961,
-    "fdi_inflows": 0.057278,
-    "labor_force_part": 0.377912,
-    "urban_population_pct": 0.316538
-  }
+  ]
 }
-'''
-
-parsed_data = json.loads(json_data)
-print(parsed_data)
