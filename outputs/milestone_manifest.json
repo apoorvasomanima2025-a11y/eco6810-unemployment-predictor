@@ -107,3 +107,7 @@ json_data = '''
     }
   ]
 }
+'''
+
+parsed_data = json.loads(json_data)
+print(parsed_data)
