@@ -1,3 +1,6 @@
+import json
+
+json_data = '''
 {
   "metric_name": "Baseline Out-of-sample R\u00b2 (mean prediction)",
   "value": -0.000878,
@@ -5,3 +8,7 @@
   "passed": true,
   "baseline_prediction_pct": 8.0147
 }
+'''
+
+parsed_data = json.loads(json_data)
+print(parsed_data)
