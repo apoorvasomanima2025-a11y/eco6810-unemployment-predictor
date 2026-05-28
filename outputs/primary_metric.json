@@ -1,11 +1,11 @@
 {
-  "metric_name": "Out-of-sample R\u00b2",
-  "value": 0.549109,
+  "metric_name": "Out-of-sample R²",
+  "value": 0.5139,
   "threshold": 0.45,
   "passed": true,
   "model": "Random Forest",
-  "mae_pp": 2.7701,
-  "rmse_pp": 3.9289,
-  "n_train": 3486,
-  "n_test": 872
+  "mae_pp": 2.8276,
+  "rmse_pp": 4.0083,
+  "n_train": 3495,
+  "n_test": 874
 }
