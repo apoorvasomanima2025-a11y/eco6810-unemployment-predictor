@@ -1,3 +1,6 @@
+import json
+
+json_data = '''
 {
   "project_title": "Can Macroeconomic Indicators Predict Unemployment Rates?",
   "author": "Apoorva Somani",
@@ -133,3 +136,7 @@
     }
   ]
 }
+'''
+
+parsed_data = json.loads(json_data)
+print(parsed_data)
