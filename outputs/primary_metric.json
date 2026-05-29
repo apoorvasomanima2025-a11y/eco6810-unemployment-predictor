@@ -1,8 +1,5 @@
-import json
-
-json_data = '''
 {
-  "metric_name": "Out-of-sample R\u00b2",
+  "metric_name": "Out-of-sample R²",
   "value": 0.5139,
   "threshold": 0.45,
   "passed": true,
@@ -12,7 +9,3 @@ json_data = '''
   "n_train": 3495,
   "n_test": 874
 }
-'''
-
-parsed_data = json.loads(json_data)
-print(parsed_data)
