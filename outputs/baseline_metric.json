@@ -2,9 +2,9 @@ import json
 
 json_data = '''
 {
-  "metric_name": "Baseline Out-of-sample R\u00b2 (mean prediction)",
+  "metric_name": "Baseline Out-of-sample R² (mean prediction)",
   "value": -0.000878,
-  "threshold": 0.0,
+  "threshold": 0,
   "passed": true,
   "baseline_prediction_pct": 8.0147
 }
