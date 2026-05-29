@@ -84,6 +84,8 @@ FeatureImportanceLabour force participation0.377Urban population share0.329Trade
 Labour force participation and urbanisation together account for 70.6% of predictive signal, reflecting persistent structural differences between countries.
 Fig 7 — Unemployment by income group (outputs/figures/fig7_unemployment_by_income_group.png)
 Box plots by World Bank income classification (2000–2023). Low-income countries (median ~3%) and lower-middle-income countries (median ~5%) have substantially lower unemployment rates than high-income and upper-middle-income countries (medians ~6–7%). This non-monotonic pattern is consistent with the absence of a simple income–unemployment gradient and likely reflects differences in labour market formality and measurement.
+Fig A — Cumulative error and R² comparison (outputs/figures/figA_cumulative_error_and_r2_comparison.png)
+Left panel: cumulative error curves for all three models. At the MAE threshold (2.83 pp), Random Forest places ~50% of test predictions within that error. Right panel: test R² bar chart confirms Random Forest (0.514) and Gradient Boosting (0.467) both clear the 0.45 threshold; Ridge (0.168) does not.
 Table 1 — Stratified unemployment by GDP per capita quartile
 
 - GDP per capita quartile    n     Mean   unemployment (%)SE                     - Q1 (lowest)             1,093   8.50     0.185
