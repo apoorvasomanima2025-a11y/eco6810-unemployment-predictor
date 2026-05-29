@@ -1,13 +1,10 @@
-import json
-
-json_data = '''
 {
   "project_title": "Can Macroeconomic Indicators Predict Unemployment Rates?",
   "author": "Apoorva Somani",
   "course": "ECO 6810",
   "status": "complete",
   "data_source": "World Bank WDI — data/Unemployment.xlsx (downloaded 2026-04-08)",
-  "data_note": "gdp_per_capita_growth derived as YoY pct_change of gdp_per_capita within each country; first observations (pct_change NaN) and values outside the 5th–95th percentile are excluded before the hypothesis test to remove rebase and first-obs artifacts",
+  "data_note": "9 predictors read from 10 WDI sheets; gdp_per_capita_growth is NY.GDP.PCAP.KD.ZG read directly (not derived via pct_change); fdi_inflows sign-log transformed; growth variable winsorised at 5th/95th pct before hypothesis test",
   "year_range": [
     2000,
     2023
@@ -17,17 +14,71 @@ json_data = '''
   "n_train": 3495,
   "n_test": 874,
   "features": [
-    "gdp_per_capita",
     "gdp_per_capita_growth",
     "inflation",
+    "industry_value_added",
     "trade_openness",
     "fdi_inflows",
     "labor_force_part",
-    "urban_population_pct"
+    "urban_population_pct",
+    "school_enrollment",
+    "population_growth"
   ],
+  "sheets_used": {
+    "Unemployment": {
+      "col": "unemployment_rate",
+      "wb_code": "SL.UEM.TOTL.ZS",
+      "role": "outcome"
+    },
+    "GDP Per Cap": {
+      "col": "gdp_per_capita_growth",
+      "wb_code": "NY.GDP.PCAP.KD.ZG",
+      "role": "feature"
+    },
+    "Inflation": {
+      "col": "inflation",
+      "wb_code": "FP.CPI.TOTL.ZG",
+      "role": "feature"
+    },
+    "Industry": {
+      "col": "industry_value_added",
+      "wb_code": "NV.IND.TOTL.ZS",
+      "role": "feature"
+    },
+    "Trade": {
+      "col": "trade_openness",
+      "wb_code": "NE.TRD.GNFS.ZS",
+      "role": "feature"
+    },
+    "FDI": {
+      "col": "fdi_inflows",
+      "wb_code": "BX.KLT.DINV.WD.GD.ZS",
+      "role": "feature"
+    },
+    "Labour Force": {
+      "col": "labor_force_part",
+      "wb_code": "SL.TLF.ACTI.ZS",
+      "role": "feature"
+    },
+    "Urban Pop": {
+      "col": "urban_population_pct",
+      "wb_code": "SP.URB.TOTL.IN.ZS",
+      "role": "feature"
+    },
+    "School": {
+      "col": "school_enrollment",
+      "wb_code": "SE.TER.ENRR",
+      "role": "feature"
+    },
+    "Population Total": {
+      "col": "population_growth",
+      "wb_code": "SP.POP.GROW",
+      "role": "feature"
+    }
+  },
   "best_model": "Random Forest",
   "primary_r2": 0.5139,
-  "baseline_r2": -0.0002,
+  "baseline_r2": -0.000878,
   "threshold": 0.45,
   "passed": true,
   "mae_pp": 2.8276,
@@ -46,39 +97,14 @@ json_data = '''
       "std": 0.0141
     }
   },
-  "cleaning": {
-    "rows_dropped_gt2_missing": 115,
-    "median_fills": {
-      "gdp_per_capita": {
-        "n": 18,
-        "median": 2.202
-      },
-      "gdp_per_capita_growth": {
-        "n": 176,
-        "median": -31.279
-      },
-      "inflation": {
-        "n": 331,
-        "median": 3.7
-      },
-      "trade_openness": {
-        "n": 438,
-        "median": 74.6713
-      },
-      "fdi_inflows": {
-        "n": 124,
-        "median": 1.3274
-      }
-    }
-  },
   "hypothesis": {
-    "median_gdppc_growth_pct": -31.28,
-    "mean_unemp_below_median_pct": 8,
-    "mean_unemp_above_median_pct": 7.92,
+    "median_gdppc_growth_pct": 2.8341,
+    "mean_unemp_below_median_pct": 8.04,
+    "mean_unemp_above_median_pct": 7.96,
     "difference_pp": 0.08,
     "threshold_pp": 1.5,
     "hypothesis_supported": false,
-    "note": "Median is distorted by first-observation pct_change artifacts. Both groups average ~8% unemployment; difference of 0.08 pp is far below the 1.5 pp threshold."
+    "note": "Growth read directly from NY.GDP.PCAP.KD.ZG; winsorised at 5th/95th pct. Hypothesis still not supported after clean operationalisation."
   },
   "stratified_estimates": [
     {
@@ -107,7 +133,3 @@ json_data = '''
     }
   ]
 }
-'''
-
-parsed_data = json.loads(json_data)
-print(parsed_data)
