@@ -1,13 +1,10 @@
-import json
-
-json_data = '''
 {
   "project_title": "Can Macroeconomic Indicators Predict Unemployment Rates?",
   "author": "Apoorva Somani",
   "course": "ECO 6810",
   "status": "complete",
   "data_source": "World Bank WDI — data/Unemployment.xlsx (downloaded 2026-04-08)",
-  "data_note": "9 predictors read from 10 WDI sheets; gdp_per_capita_growth is NY.GDP.PCAP.KD.ZG read directly (not derived via pct_change); fdi_inflows sign-log transformed; growth variable winsorised at 5th/95th pct before hypothesis test",
+  "data_note": "10 WDI sheets: 1 outcome + 9 predictors. gdp_per_capita_growth read directly from NY.GDP.PCAP.KD.ZG (pre-computed by World Bank, no pct_change). fdi_inflows sign-log transformed. Growth winsorised at 5th/95th pct before hypothesis test.",
   "year_range": [
     2000,
     2023
@@ -16,6 +13,7 @@ json_data = '''
   "n_obs_total": 4369,
   "n_train": 3495,
   "n_test": 874,
+  "n_features": 9,
   "features": [
     "gdp_per_capita_growth",
     "inflation",
@@ -29,54 +27,53 @@ json_data = '''
   ],
   "sheets_used": {
     "Unemployment": {
-      "col": "unemployment_rate",
       "wb_code": "SL.UEM.TOTL.ZS",
       "role": "outcome"
     },
     "GDP Per Cap": {
-      "col": "gdp_per_capita_growth",
       "wb_code": "NY.GDP.PCAP.KD.ZG",
-      "role": "feature"
+      "role": "feature",
+      "col": "gdp_per_capita_growth"
     },
     "Inflation": {
-      "col": "inflation",
       "wb_code": "FP.CPI.TOTL.ZG",
-      "role": "feature"
+      "role": "feature",
+      "col": "inflation"
     },
     "Industry": {
-      "col": "industry_value_added",
       "wb_code": "NV.IND.TOTL.ZS",
-      "role": "feature"
+      "role": "feature",
+      "col": "industry_value_added"
     },
     "Trade": {
-      "col": "trade_openness",
       "wb_code": "NE.TRD.GNFS.ZS",
-      "role": "feature"
+      "role": "feature",
+      "col": "trade_openness"
     },
     "FDI": {
-      "col": "fdi_inflows",
       "wb_code": "BX.KLT.DINV.WD.GD.ZS",
-      "role": "feature"
+      "role": "feature",
+      "col": "fdi_inflows"
     },
     "Labour Force": {
-      "col": "labor_force_part",
       "wb_code": "SL.TLF.ACTI.ZS",
-      "role": "feature"
+      "role": "feature",
+      "col": "labor_force_part"
     },
     "Urban Pop": {
-      "col": "urban_population_pct",
       "wb_code": "SP.URB.TOTL.IN.ZS",
-      "role": "feature"
+      "role": "feature",
+      "col": "urban_population_pct"
     },
     "School": {
-      "col": "school_enrollment",
       "wb_code": "SE.TER.ENRR",
-      "role": "feature"
+      "role": "feature",
+      "col": "school_enrollment"
     },
     "Population Total": {
-      "col": "population_growth",
       "wb_code": "SP.POP.GROW",
-      "role": "feature"
+      "role": "feature",
+      "col": "population_growth"
     }
   },
   "best_model": "Random Forest",
@@ -107,7 +104,7 @@ json_data = '''
     "difference_pp": 0.08,
     "threshold_pp": 1.5,
     "hypothesis_supported": false,
-    "note": "Growth read directly from NY.GDP.PCAP.KD.ZG; winsorised at 5th/95th pct. Hypothesis still not supported after clean operationalisation."
+    "note": "Growth read directly from NY.GDP.PCAP.KD.ZG — no pct_change. Winsorised at 5th/95th pct. Hypothesis not supported: difference well below 1.5 pp threshold."
   },
   "stratified_estimates": [
     {
@@ -136,7 +133,3 @@ json_data = '''
     }
   ]
 }
-'''
-
-parsed_data = json.loads(json_data)
-print(parsed_data)
