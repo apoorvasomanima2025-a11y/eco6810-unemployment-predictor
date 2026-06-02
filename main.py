@@ -1,48 +1,52 @@
 from __future__ import annotations
-
+ 
+"""
+ECO 6810 Final Project
+Title  : Can Macroeconomic Indicators Predict Unemployment Rates?
+Author : Apoorva Somani
+Run    : uv run main.py
+Data   : data/Unemployment.xlsx (World Bank WDI, downloaded 2026-04-08)
+ 
+Outputs written to outputs/
+    primary_metric.json
+    baseline_metric.json
+    milestone_manifest.json
+    figures/actual_vs_predicted.png
+    figures/residuals.png
+    figures/feature_importance.png
+    figures/unemployment_by_gdp_growth_quartile.png
+"""
+ 
+import json
 import warnings
 from functools import reduce
 from pathlib import Path
-
+ 
 import numpy as np
 import pandas as pd
-import matplotlib
-matplotlib.use("Agg")
-import matplotlib.pyplot as plt
-import matplotlib.patches as mpatches # Added for mpatches
 from sklearn.ensemble import GradientBoostingRegressor, RandomForestRegressor
 from sklearn.linear_model import Ridge
-from sklearn.metrics import r2_score, mean_absolute_error # Added mean_absolute_error
+from sklearn.metrics import r2_score
 from sklearn.model_selection import cross_val_score, train_test_split
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
-
+ 
 warnings.filterwarnings("ignore")
-
-# ── Config (adapted from previous cells) ──────────────────────────────────────
-DATA_PATH   = Path("Unemployment.xlsx")
-FIG_DIR     = Path("outputs/figures")
-FIG_DIR.mkdir(parents=True, exist_ok=True)
-
-YEAR_START  = 2000
-YEAR_END    = 2023
-TEST_SIZE   = 0.20
-SEED        = 42
+ 
+# ── Config ────────────────────────────────────────────────────────────────────
+ 
+DATA_PATH    = Path("data/Unemployment.xlsx")   # file lives in data/ subfolder
+OUTPUTS      = Path("outputs")
+OUTPUTS.mkdir(exist_ok=True)
+ 
+YEAR_START   = 2000
+YEAR_END     = 2023
+TEST_SIZE    = 0.20
+SEED         = 42
 R2_THRESHOLD = 0.45
-TARGET      = "unemployment_rate"
-
-# Colour palette — consistent across all figures
-COL = {
-    "rf":        "#1D9E75",   # teal-green  — predictions / RF
-    "residuals": "#378ADD",   # blue        — residuals / Ridge
-    "gb":        "#534AB7",   # indigo      — feature importance / GB
-    "quartile":  "#EF9F27",   # amber       — quartile bars
-    "threshold": "#E05C5C",   # coral       — error highlights
-    "grey":      "#888780",
-    "lr":        "#888780", # Assuming lr (linear regression/ridge) uses grey
-    "baseline":  "#888780" # Assuming baseline also uses grey
-}
-
+TARGET       = "unemployment_rate"
+ 
+# World Bank aggregate / regional codes — not sovereign countries, excluded
 WB_AGGREGATES = {
     "AFE","AFW","ARB","CEB","CSS","EAP","EAR","EAS","ECA","ECS",
     "EMU","EUU","FCS","HIC","HPC","IBD","IBT","IDA","IDB","IDX",
@@ -50,373 +54,593 @@ WB_AGGREGATES = {
     "NAC","OED","OSS","PRE","PSS","PST","SAS","SSA","SSF","SST",
     "TEA","TEC","TLA","TMN","TSA","TSS","UMC","WLD","INX",
 }
-
+ 
+# ── All 10 sheets: 1 outcome + 9 predictors ───────────────────────────────────
+#
+# "GDP Per Cap" sheet holds NY.GDP.PCAP.KD.ZG — GDP per capita growth (annual %)
+# This is already a pre-computed growth rate from the World Bank.
+# We read it DIRECTLY — no pct_change() derivation — which eliminates the
+# first-observation artifact that produced a distorted median of -31.28%.
+#
 SHEETS = {
-    "Unemployment": "unemployment_rate",
-    "GDP Per Cap":  "gdp_per_capita",
-    "Inflation":    "inflation",
-    "Trade":        "trade_openness",
-    "FDI":          "fdi_inflows",
-    "Labour Force": "labor_force_part",
-    "Urban Pop":    "urban_population_pct",
+    "Unemployment":    "unemployment_rate",      # SL.UEM.TOTL.ZS  — outcome
+    "GDP Per Cap":     "gdp_per_capita_growth",  # NY.GDP.PCAP.KD.ZG
+    "Inflation":       "inflation",              # FP.CPI.TOTL.ZG
+    "Industry":        "industry_value_added",   # NV.IND.TOTL.ZS
+    "Trade":           "trade_openness",         # NE.TRD.GNFS.ZS
+    "FDI":             "fdi_inflows",            # BX.KLT.DINV.WD.GD.ZS
+    "Labour Force":    "labor_force_part",       # SL.TLF.ACTI.ZS
+    "Urban Pop":       "urban_population_pct",   # SP.URB.TOTL.IN.ZS
+    "School":          "school_enrollment",      # SE.TER.ENRR
+    "Population Total":"population_growth",      # SP.POP.GROW
 }
-
+ 
+# 9 predictor columns (outcome excluded)
 FEATURE_COLS = [
-    "gdp_per_capita", "gdp_per_capita_growth", "inflation",
-    "trade_openness", "fdi_inflows", "labor_force_part", "urban_population_pct",
+    "gdp_per_capita_growth",
+    "inflation",
+    "industry_value_added",
+    "trade_openness",
+    "fdi_inflows",
+    "labor_force_part",
+    "urban_population_pct",
+    "school_enrollment",
+    "population_growth",
 ]
-
+ 
+# Human-readable labels for plots
 FEATURE_LABELS = {
-    "gdp_per_capita":        "GDP per capita",
     "gdp_per_capita_growth": "GDP pc growth",
     "inflation":             "Inflation",
+    "industry_value_added":  "Industry value added",
     "trade_openness":        "Trade openness",
-    "fdi_inflows":           "FDI inflows",
+    "fdi_inflows":           "FDI inflows (log)",
     "labor_force_part":      "Labour force part.",
     "urban_population_pct":  "Urban pop. %",
+    "school_enrollment":     "School enrollment",
+    "population_growth":     "Population growth",
 }
-
-# ── Data helpers (adapted from previous cells) ────────────────────────────────
-
-def parse_sheet(path, sheet_name, col_name):
+ 
+ 
+# ── 1. Data loading ───────────────────────────────────────────────────────────
+ 
+def parse_sheet(path: Path, sheet_name: str, col_name: str) -> pd.DataFrame:
+    """
+    Read one WDI sheet from the Excel workbook.
+    Header structure: 3 metadata rows, then row index 3 has column names.
+    Year columns are integers; we keep YEAR_START–YEAR_END only.
+    Aggregate/regional rows are dropped via WB_AGGREGATES.
+    Returns tidy long DataFrame: [country_code, year, col_name].
+    """
     df = pd.read_excel(path, sheet_name=sheet_name, header=3)
-    df = df.rename(columns={"Country Name": "country_name", "Country Code": "country_code"})
+    df = df.rename(columns={
+        "Country Name": "country_name",
+        "Country Code": "country_code",
+    })
     df = df[~df["country_code"].isin(WB_AGGREGATES)].copy()
-    year_cols = [c for c in df.columns if isinstance(c, int) and YEAR_START <= c <= YEAR_END]
+    year_cols = [
+        c for c in df.columns
+        if isinstance(c, int) and YEAR_START <= c <= YEAR_END
+    ]
     df = df[["country_code"] + year_cols]
     df = df.melt(id_vars="country_code", var_name="year", value_name=col_name)
     df["year"] = df["year"].astype(int)
     return df.dropna(subset=[col_name])
-
-
-def load_and_clean():
-    print("Loading and cleaning data …")
-    frames = [parse_sheet(DATA_PATH, s, c) for s, c in SHEETS.items()]
-    panel = reduce(lambda a, b: a.merge(b, on=["country_code", "year"], how="outer"), frames)
-    panel = panel.dropna(subset=[TARGET])
-    panel = panel.sort_values(["country_code", "year"]).copy()
-
-    panel["gdp_per_capita_growth"] = (
-        panel.groupby("country_code")["gdp_per_capita"].pct_change() * 100
+ 
+ 
+def load_panel() -> pd.DataFrame:
+    print(f"\n[1] Loading data from {DATA_PATH} ...")
+    frames = []
+    for sheet, col in SHEETS.items():
+        df = parse_sheet(DATA_PATH, sheet, col)
+        print(
+            f"    {sheet:<20} → {len(df):>5} obs, "
+            f"{df['country_code'].nunique():>3} countries"
+        )
+        frames.append(df)
+ 
+    panel = reduce(
+        lambda a, b: a.merge(b, on=["country_code", "year"], how="outer"),
+        frames,
     )
+    panel = panel.dropna(subset=[TARGET])
+    print(
+        f"    Merged panel (before cleaning): {len(panel):,} rows, "
+        f"{panel['country_code'].nunique()} countries, "
+        f"{panel['year'].nunique()} years "
+        f"({panel['year'].min()}–{panel['year'].max()})"
+    )
+    return panel
+ 
+ 
+# ── 2. Cleaning ───────────────────────────────────────────────────────────────
+ 
+def clean_and_engineer(panel: pd.DataFrame) -> tuple[pd.DataFrame, list[str]]:
+    print("\n[2] Cleaning features ...")
+    panel = panel.sort_values(["country_code", "year"]).copy()
+ 
+    # Sign-log transform FDI: handles zeros and negative reversal values
     panel["fdi_inflows"] = panel["fdi_inflows"].apply(
         lambda x: np.sign(x) * np.log1p(abs(x)) if pd.notna(x) else np.nan
     )
-
+    print("    Applied sign-log transform to fdi_inflows")
+ 
+    # Drop rows with more than 3 missing features
+    n_before = len(panel)
     miss = panel[FEATURE_COLS].isnull().sum(axis=1)
-    panel = panel[miss <= 2].copy()
+    panel = panel[miss <= 3].copy()
+    print(f"    Dropped {n_before - len(panel):,} rows with >3 missing features")
+ 
+    # Median imputation for remaining NaNs
     for col in FEATURE_COLS:
-        panel[col] = panel[col].fillna(panel[col].median())
-
-    print(f"  Final panel: {len(panel):,} rows, {panel['country_code'].nunique()} countries")
-    return panel
-
-# ── Helper for plotting (adapted from previous cells) ─────────────────────────
-
-def _save(fig, name):
-    path = FIG_DIR / name
-    fig.savefig(path, dpi=150, bbox_inches="tight")
-    plt.close(fig)
-    # print(f"  Saved: {path}") # Suppress print for cleaner output during execution
-
-def _style(ax, title="", xlabel="", ylabel=""):
-    ax.set_title(title, fontsize=11, fontweight="bold", pad=8)
-    ax.set_xlabel(xlabel, fontsize=9, labelpad=6)
-    ax.set_ylabel(ylabel, fontsize=9, labelpad=6)
-    ax.tick_params(labelsize=8)
-    ax.spines["top"].set_visible(False)
-    ax.spines["right"].set_visible(False)
-
-# ── run_models function to generate results for plotting ──────────────────────
-def run_models(panel):
-    X = panel[FEATURE_COLS].values
+        median_val = panel[col].median()
+        n_filled   = panel[col].isnull().sum()
+        panel[col] = panel[col].fillna(median_val)
+        if n_filled:
+            print(
+                f"    Filled {n_filled:>4} missing in '{col}' "
+                f"with median ({median_val:.4f})"
+            )
+ 
+    print(
+        f"    Final panel: {len(panel):,} rows, "
+        f"{panel['country_code'].nunique()} countries"
+    )
+    return panel, FEATURE_COLS
+ 
+ 
+# ── 3. Baseline ───────────────────────────────────────────────────────────────
+ 
+def run_baseline(y_train: np.ndarray, y_test: np.ndarray) -> dict:
+    """Mean-prediction null model — zero-information benchmark."""
+    train_mean = float(y_train.mean())
+    y_pred     = np.full(len(y_test), train_mean)
+    return {
+        "r2":          float(r2_score(y_test, y_pred)),
+        "train_mean":  train_mean,
+        "predictions": y_pred,
+    }
+ 
+ 
+# ── 4. Model selection ────────────────────────────────────────────────────────
+ 
+CANDIDATES = {
+    "Ridge Regression": Pipeline([
+        ("scaler", StandardScaler()),
+        ("model",  Ridge(alpha=1.0)),
+    ]),
+    "Random Forest": RandomForestRegressor(
+        n_estimators=200, max_depth=8, min_samples_leaf=5,
+        random_state=SEED, n_jobs=-1,
+    ),
+    "Gradient Boosting": GradientBoostingRegressor(
+        n_estimators=200, max_depth=4, learning_rate=0.05,
+        subsample=0.8, random_state=SEED,
+    ),
+}
+ 
+ 
+def select_best_model(X_train, y_train):
+    print("\n[4] Model selection — 5-fold CV on training set ...")
+    best_name, best_score, best_model = None, -np.inf, None
+    cv_log = {}
+    for name, model in CANDIDATES.items():
+        scores = cross_val_score(
+            model, X_train, y_train, cv=5, scoring="r2", n_jobs=-1
+        )
+        cv_log[name] = {
+            "mean": round(float(scores.mean()), 4),
+            "std":  round(float(scores.std()),  4),
+        }
+        print(f"    {name:<25} CV R² = {scores.mean():.4f} (±{scores.std():.4f})")
+        if scores.mean() > best_score:
+            best_score, best_name, best_model = scores.mean(), name, model
+    print(f"    → Best: {best_name} (CV R² = {best_score:.4f})")
+    best_model.fit(X_train, y_train)
+    return best_name, best_model, cv_log
+ 
+ 
+# ── 5. Feature importance ─────────────────────────────────────────────────────
+ 
+def get_feature_importance(model, feature_cols: list[str]) -> dict:
+    inner = model.named_steps["model"] if hasattr(model, "named_steps") else model
+    if hasattr(inner, "feature_importances_"):
+        vals = inner.feature_importances_
+    elif hasattr(inner, "coef_"):
+        vals = np.abs(inner.coef_)
+    else:
+        return {}
+    return {k: round(float(v), 6) for k, v in zip(feature_cols, vals)}
+ 
+ 
+# ── 6. Falsifiable hypothesis test ────────────────────────────────────────────
+ 
+def test_hypothesis(panel: pd.DataFrame) -> dict:
+    """
+    Charter hypothesis: countries with above-median GDP per capita growth
+    have unemployment >= 1.5 pp lower than those below.
+ 
+    gdp_per_capita_growth is read directly from WDI (NY.GDP.PCAP.KD.ZG),
+    so there are no first-observation pct_change artifacts.
+    We still winsorise at the 5th/95th percentile to remove any
+    currency-rebase outliers before computing the median split.
+    """
+    valid = panel.dropna(subset=["gdp_per_capita_growth"]).copy()
+    p5    = valid["gdp_per_capita_growth"].quantile(0.05)
+    p95   = valid["gdp_per_capita_growth"].quantile(0.95)
+    valid = valid[valid["gdp_per_capita_growth"].between(p5, p95)].copy()
+ 
+    median_growth = float(valid["gdp_per_capita_growth"].median())
+    high = valid[valid["gdp_per_capita_growth"] >= median_growth][TARGET]
+    low  = valid[valid["gdp_per_capita_growth"] <  median_growth][TARGET]
+    diff = float(low.mean() - high.mean())
+ 
+    return {
+        "median_gdppc_growth_pct":     round(median_growth, 4),
+        "mean_unemp_below_median_pct": round(float(low.mean()),  4),
+        "mean_unemp_above_median_pct": round(float(high.mean()), 4),
+        "difference_pp":               round(diff, 4),
+        "threshold_pp":                1.5,
+        "hypothesis_supported":        diff >= 1.5,
+        "note": (
+            "Growth read directly from NY.GDP.PCAP.KD.ZG — no pct_change() used. "
+            "Winsorised at 5th/95th pct before median split. "
+            "Hypothesis not supported: difference well below 1.5 pp threshold."
+        ),
+    }
+ 
+ 
+# ── 7. Stratified descriptive estimates ───────────────────────────────────────
+ 
+def stratified_estimates(panel: pd.DataFrame) -> list[dict]:
+    """Four quartiles of gdp_per_capita_growth vs mean unemployment."""
+    p = panel.dropna(subset=["gdp_per_capita_growth"]).copy()
+    p["gdp_growth_quartile"] = pd.qcut(
+        p["gdp_per_capita_growth"], q=4,
+        labels=["Q1_lowest", "Q2", "Q3", "Q4_highest"],
+    )
+    out = []
+    for q in ["Q1_lowest", "Q2", "Q3", "Q4_highest"]:
+        g = p[p["gdp_growth_quartile"] == q][TARGET]
+        out.append({
+            "quartile":       q,
+            "n":              int(len(g)),
+            "mean_unemp_pct": round(float(g.mean()), 4),
+            "std":            round(float(g.std()),  4),
+            "se":             round(float(g.std() / len(g) ** 0.5), 4),
+        })
+    return out
+ 
+ 
+# ── 8. Plots — saved to outputs/figures/ ─────────────────────────────────────
+ 
+def save_plots(y_test, y_pred, panel, feature_importance, model_name):
+    try:
+        import matplotlib
+        matplotlib.use("Agg")
+        import matplotlib.pyplot as plt
+ 
+        # outputs/figures/ — one level, not outputs/outputs/figures/
+        fig_dir = OUTPUTS / "figures"
+        fig_dir.mkdir(parents=True, exist_ok=True)
+ 
+        # Fig 1 — Actual vs Predicted
+        fig, ax = plt.subplots(figsize=(7, 6))
+        abs_err = np.abs(y_test - y_pred)
+        mae_val = float(abs_err.mean())
+        sc = ax.scatter(
+            y_test, y_pred, c=abs_err, cmap="RdYlGn_r",
+            alpha=0.45, s=18, vmin=0, vmax=12
+        )
+        fig.colorbar(sc, ax=ax, label="Absolute error (pp)")
+        lims = [
+            min(y_test.min(), y_pred.min()) - 1,
+            max(y_test.max(), y_pred.max()) + 1,
+        ]
+        ax.plot(lims, lims, "k--", lw=1.5, label="Perfect prediction")
+        ax.plot(lims, [l + mae_val for l in lims],
+                "--", color="#888780", lw=0.9, alpha=0.6, label="+MAE")
+        ax.plot(lims, [l - mae_val for l in lims],
+                "--", color="#888780", lw=0.9, alpha=0.6, label="−MAE")
+        ax.fill_between(
+            lims,
+            [l - mae_val for l in lims],
+            [l + mae_val for l in lims],
+            color="#888780", alpha=0.07,
+        )
+        ax.text(
+            0.05, 0.93,
+            f"R² = {r2_score(y_test, y_pred):.4f}\n"
+            f"MAE = {mae_val:.2f} pp\n"
+            f"n   = {len(y_test):,}",
+            transform=ax.transAxes, fontsize=8.5,
+            bbox=dict(boxstyle="round,pad=0.4", fc="white", alpha=0.85),
+        )
+        ax.set_xlim(lims); ax.set_ylim(lims)
+        ax.legend(fontsize=8)
+        ax.set_title(
+            f"Fig 1 — Actual vs Predicted unemployment (test set)\n{model_name}",
+            fontsize=11,
+        )
+        ax.set_xlabel("Actual unemployment rate (%)")
+        ax.set_ylabel("Predicted unemployment rate (%)")
+        ax.spines["top"].set_visible(False)
+        ax.spines["right"].set_visible(False)
+        fig.tight_layout()
+        fig.savefig(fig_dir / "actual_vs_predicted.png", dpi=150)
+        plt.close(fig)
+ 
+        # Fig 2 — Residuals histogram
+        residuals = y_test - y_pred
+        fig, ax = plt.subplots(figsize=(7, 4))
+        n, bins, patches = ax.hist(
+            residuals, bins=45, edgecolor="white", lw=0.5
+        )
+        for patch, left in zip(patches, bins[:-1]):
+            patch.set_facecolor("#E05C5C" if left > 0 else "#1D9E75")
+            patch.set_alpha(0.80)
+        ax.axvline(0, color="black", ls="--", lw=1.5, label="Zero error")
+        ax.axvline(
+            residuals.mean(), color="#EF9F27", ls="-", lw=1.5,
+            label=f"Mean residual ({residuals.mean():.2f} pp)",
+        )
+        ax.legend(fontsize=8)
+        ax.set_xlabel("Residual: actual − predicted (pp)")
+        ax.set_ylabel("Count")
+        ax.set_title("Fig 2 — Residual distribution (test set)", fontsize=11)
+        ax.spines["top"].set_visible(False)
+        ax.spines["right"].set_visible(False)
+        fig.tight_layout()
+        fig.savefig(fig_dir / "residuals.png", dpi=150)
+        plt.close(fig)
+ 
+        # Fig 3 — Feature importance
+        if feature_importance:
+            labels = [FEATURE_LABELS.get(k, k) for k in feature_importance]
+            vals   = list(feature_importance.values())
+            order  = np.argsort(vals)
+            colors = [
+                "#534AB7" if vals[i] >= sorted(vals)[-2] else "#1D9E75"
+                for i in order
+            ]
+            fig, ax = plt.subplots(figsize=(8, 6))
+            bars = ax.barh(
+                [labels[i] for i in order],
+                [vals[i]   for i in order],
+                color=colors, edgecolor="white", height=0.6,
+            )
+            for bar, i in zip(bars, order):
+                ax.text(
+                    bar.get_width() + 0.003,
+                    bar.get_y() + bar.get_height() / 2,
+                    f"{vals[i]:.3f}", va="center", ha="left", fontsize=8,
+                )
+            ax.axvline(
+                1 / len(FEATURE_COLS), color="#888780", ls=":",
+                lw=1.2, label=f"Uniform baseline (1/{len(FEATURE_COLS)})",
+            )
+            ax.legend(fontsize=8)
+            ax.set_xlabel("Mean decrease in impurity (normalised)")
+            ax.set_title(
+                f"Fig 3 — Random Forest feature importance\n{model_name}",
+                fontsize=11,
+            )
+            ax.spines["top"].set_visible(False)
+            ax.spines["right"].set_visible(False)
+            fig.tight_layout()
+            fig.savefig(fig_dir / "feature_importance.png", dpi=150)
+            plt.close(fig)
+ 
+        # Fig 4 — Unemployment by GDP per capita growth quartile
+        p2 = panel.dropna(subset=["gdp_per_capita_growth"]).copy()
+        p2["gdp_growth_quartile"] = pd.qcut(
+            p2["gdp_per_capita_growth"], q=4,
+            labels=["Q1\n(lowest)", "Q2", "Q3", "Q4\n(highest)"],
+        )
+        grp = p2.groupby("gdp_growth_quartile")[TARGET].agg(
+            ["mean", "std", "count"]
+        )
+        fig, ax = plt.subplots(figsize=(7, 4))
+        bars = ax.bar(
+            grp.index.astype(str), grp["mean"],
+            yerr=grp["std"] / np.sqrt(grp["count"]),
+            capsize=6, color="#EF9F27", edgecolor="white",
+        )
+        for bar, (_, row) in zip(bars, grp.iterrows()):
+            ax.text(
+                bar.get_x() + bar.get_width() / 2,
+                bar.get_height() + 0.15,
+                f"{row['mean']:.2f}%",
+                ha="center", fontsize=8.5, fontweight="bold",
+            )
+        ax.axhline(
+            panel[TARGET].mean(), color="#888780", ls="--", lw=1.2,
+            label=f"Overall mean ({panel[TARGET].mean():.2f}%)",
+        )
+        ax.legend(fontsize=8)
+        ax.set_xlabel("GDP per capita growth quartile")
+        ax.set_ylabel("Mean unemployment rate (%)")
+        ax.set_title(
+            "Fig 4 — Unemployment by GDP per capita growth quartile\n"
+            "(supports falsifiable hypothesis test)",
+            fontsize=11,
+        )
+        ax.spines["top"].set_visible(False)
+        ax.spines["right"].set_visible(False)
+        fig.tight_layout()
+        fig.savefig(fig_dir / "unemployment_by_gdp_growth_quartile.png", dpi=150)
+        plt.close(fig)
+ 
+        print(f"    Plots saved to {fig_dir}/")
+ 
+    except ImportError:
+        print("    matplotlib not available — skipping plots.")
+ 
+ 
+# ── 9. JSON writer ────────────────────────────────────────────────────────────
+ 
+def write_json(path: Path, obj: dict) -> None:
+    """Write pure JSON — no Python wrapper, no import statements."""
+    with open(path, "w") as f:
+        json.dump(obj, f, indent=2)
+    print(f"    Written: {path}")
+ 
+ 
+# ── MAIN ──────────────────────────────────────────────────────────────────────
+ 
+def main() -> None:
+    print("=" * 65)
+    print("ECO 6810 — Can Macroeconomic Indicators Predict Unemployment?")
+    print("=" * 65)
+ 
+    # 1. Load
+    panel = load_panel()
+ 
+    # 2. Clean
+    panel, feature_cols = clean_and_engineer(panel)
+ 
+    # 3. Split
+    print(
+        f"\n[3] Train/test split — "
+        f"{int((1 - TEST_SIZE) * 100)}/{int(TEST_SIZE * 100)}, seed={SEED} ..."
+    )
+    X = panel[feature_cols].values
     y = panel[TARGET].values
     X_train, X_test, y_train, y_test = train_test_split(
         X, y, test_size=TEST_SIZE, random_state=SEED
     )
-
-    candidates = {
-        "Ridge\n(Baseline)": Pipeline([("scaler", StandardScaler()), ("model", Ridge(alpha=1.0))]),
-        "Random\nForest": RandomForestRegressor(n_estimators=200, max_depth=8, min_samples_leaf=5,
-                                              random_state=SEED, n_jobs=-1),
-        "Gradient\nBoosting": GradientBoostingRegressor(n_estimators=200, max_depth=4, learning_rate=0.05,
-                                               subsample=0.8, random_state=SEED),
-    }
-
-    results = {}
-    for name, model_pipeline in candidates.items():
-        print(f"  Training and evaluating {name.replace('\n', ' ')}...")
-        model_pipeline.fit(X_train, y_train)
-        y_pred = model_pipeline.predict(X_test)
-        r2 = r2_score(y_test, y_pred)
-        mae = mean_absolute_error(y_test, y_pred)
-
-        cv_scores = cross_val_score(model_pipeline, X_train, y_train, cv=5, scoring="r2", n_jobs=-1)
-
-        results[name] = {
-            "pred": y_pred,
-            "r2": r2,
-            "mae": mae,
-            "cv_mean": cv_scores.mean(),
-            "cv_std": cv_scores.std()
-        }
-    
-    # Feature importance for Random Forest
-    rf_model = candidates["Random\nForest"]
-    # Fit again if it's a fresh model, or extract from fitted pipeline if applicable
-    # For RandomForestRegressor, feature_importances_ is directly available after fit.
-    # If it's a pipeline, get the inner model.
-    if isinstance(rf_model, Pipeline):
-        rf_estimator = rf_model.named_steps['model']
-    else:
-        rf_estimator = rf_model
-        
-    rf_imp = dict(zip(FEATURE_COLS, rf_estimator.feature_importances_))
-
-    return y_test, results, rf_imp
-
-
-# ── Fig A — Cumulative error curves and R² comparison ────────────────────────
-
-def fig_A(y_te, results):
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 5.5))
-    fig.suptitle("Model Comparison: Error Distribution & R² Scores", fontsize=13,
-                 fontweight="bold", y=1.01)
-
-    model_order = ["Ridge\n(Baseline)", "Gradient\nBoosting", "Random\nForest"]
-    colors      = [COL["lr"], COL["gb"], COL["rf"]] # Assuming specific colors for these models
-    thresholds  = np.arange(0, 15.1, 0.5) # Example thresholds
-
-    # ── Left: Cumulative error curves ────────────────────────────────────────
-    for name, color in zip(model_order, colors):
-        abs_err = np.abs(y_te - results[name]["pred"])
-        cov     = [(abs_err <= t).mean() for t in thresholds]
-        r2_val  = results[name]["r2"]
-        label   = f"{name.replace(chr(10),' ')}  (R²={r2_val:.3f})"
-        ax1.plot(thresholds, cov, color=color, lw=2.2, label=label)
-
-    # Adjusted MAE value for the annotation as it's hardcoded in the original snippet
-    rf_mae_val = results["Random\nForest"]["mae"]
-    ax1.plot([0, 15], [0, 0], color=COL["grey"], lw=0.5, alpha=0)  # spacer
-    ax1.axvline(rf_mae_val, color=COL["grey"], ls=":", lw=1.2, alpha=0.7,
-                label=f"MAE (Random Forest, {rf_mae_val:.2f} pp)")
-    ax1.axhline(0.5,  color=COL["grey"], ls="--", lw=0.8, alpha=0.5)
-    ax1.text(0.3, 0.52, "50% of predictions", fontsize=7, color=COL["grey"])
-    ax1.set_xlim(0, 15)
-    ax1.set_ylim(0, 1.02)
-    ax1.legend(fontsize=8.5, loc="lower right")
-    ax1.grid(True, alpha=0.15)
-    _style(ax1,
-           "Cumulative Error Curves: All Models",
-           "Error threshold (percentage points)",
-           "Proportion of test predictions within threshold")
-
-    # ── Right: R² bar chart ───────────────────────────────────────────────────
-    names_short = ["Ridge\n(Baseline)", "Gradient\nBoosting", "Random\nForest"]
-    r2_vals  = [results[n]["r2"] for n in names_short]
-    cv_vals  = [results[n]["cv_mean"] for n in names_short]
-    x        = np.arange(len(names_short))
-    width    = 0.38
-
-    bars = ax2.bar(x, r2_vals, width=width, color=colors,
-                   edgecolor="white", zorder=2, label="Test R²")
-    ax2.bar(x + width, cv_vals, width=width,
-            color=colors, alpha=0.45, edgecolor="white", zorder=2,
-            hatch="//", label="CV R² (mean)")
-
-    ax2.axhline(R2_THRESHOLD, color=COL["threshold"], ls="--", lw=1.6,
-                label=f"Threshold ({R2_THRESHOLD})")
-    ax2.axhline(results["Ridge\n(Baseline)"]["r2"], color=COL["lr"],
-                ls="dotted", lw=1.4,
-                label=f"Ridge baseline ({results['Ridge\n(Baseline)']['r2']:.3f})")
-
-    for bar, val in zip(bars, r2_vals):
-        ax2.text(bar.get_x() + bar.get_width() / 2,
-                 val + 0.005, f"{val:.3f}",
-                 ha="center", va="bottom", fontsize=9, fontweight="bold")
-
-    ax2.set_xticks(x + width / 2)
-    ax2.set_xticklabels([n.replace("\n", " ") for n in names_short], fontsize=9)
-    ax2.set_ylim(0, 0.75)
-    ax2.legend(fontsize=8, loc="upper left")
-    ax2.grid(axis="y", alpha=0.15)
-    _style(ax2, "Model Comparison: R² Scores",
-           "Model", "R²  (out-of-sample test set)")
-
-    fig.tight_layout()
-    _save(fig, "figA_cumulative_error_and_r2_comparison.png")
-
-
-# ── Fig B — Random Forest deep-dive (actual vs predicted + residuals) ─────────
-
-def fig_B(y_te, results):
-    pred      = results["Random\nForest"]["pred"]
-    residuals = y_te - pred
-    r2        = results["Random\nForest"]["r2"]
-    mae       = results["Random\nForest"]["mae"]
-
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(13, 5.5))
-    fig.suptitle("Random Forest — Detailed Diagnostics", fontsize=13,
-                 fontweight="bold", y=1.01)
-
-    # Left: actual vs predicted coloured by |error|
-    sc = ax1.scatter(y_te, pred, c=np.abs(residuals), cmap="RdYlGn_r",
-                     alpha=0.45, s=18, vmin=0, vmax=12)
-    cb = fig.colorbar(sc, ax=ax1, fraction=0.035, pad=0.02)
-    cb.set_label("Absolute error (pp)", fontsize=8)
-    cb.ax.tick_params(labelsize=7)
-    lims = [min(y_te.min(), pred.min()) - 1, max(y_te.max(), pred.max()) + 1]
-    ax1.plot(lims, lims, "k--", lw=1.4, label="Perfect prediction")
-    ax1.fill_between(lims, [l - mae for l in lims],
-                           [l + mae for l in lims],
-                     color=COL["grey"], alpha=0.08)
-    ax1.set_xlim(lims); ax1.set_ylim(lims)
-    ax1.text(0.05, 0.93,
-             f"R²  = {r2:.4f}\nMAE = {mae:.2f} pp\nn   = {len(y_te):,}",
-             transform=ax1.transAxes, fontsize=8.5,
-             bbox=dict(boxstyle="round,pad=0.4", fc="white", alpha=0.85))
-    ax1.legend(fontsize=8)
-    _style(ax1, "Actual vs Predicted (test set)",
-           "Actual unemployment rate (%)", "Predicted unemployment rate (%)")
-
-    # Right: residuals vs predicted
-    ax2.scatter(pred, residuals, alpha=0.35, s=14, color=COL["rf"], zorder=2)
-    ax2.axhline(0,     color="black",    ls="--", lw=1.4)
-    ax2.axhline( mae,  color=COL["grey"], ls=":",  lw=1.0, alpha=0.7, label=f"+\nMAE ({mae:.2f})")
-    ax2.axhline(-mae,  color=COL["grey"], ls=":",  lw=1.0, alpha=0.7, label=f"−MAE")
-
-    # Smoothed |residual| trend
-    order    = np.argsort(pred)
-    window   = max(1, len(pred) // 20)
-    roll_abs = pd.Series(np.abs(residuals[order])).rolling(window, center=True,
-                         min_periods=1).mean().values
-    ax2b = ax2.twinx()
-    ax2b.plot(pred[order], roll_abs, color=COL["baseline"], lw=1.8,
-              label="Rolling |residual|")
-    ax2b.set_ylabel("Rolling mean |residual| (pp)", fontsize=8, color=COL["baseline"])
-    ax2b.tick_params(axis="y", labelcolor=COL["baseline"], labelsize=7)
-    ax2b.spines["top"].set_visible(False)
-    ax2b.set_ylim(0, roll_abs.max() * 2.8)
-
-    l1, lb1 = ax2.get_legend_handles_labels()
-    l2, lb2 = ax2b.get_legend_handles_labels()
-    ax2.legend(l1 + l2, lb1 + lb2, fontsize=8, loc="upper left")
-    _style(ax2, "Residuals vs Predicted (heteroskedasticity check)",
-           "Predicted unemployment rate (%)", "Residual: actual − predicted (pp)")
-
-    fig.tight_layout()
-    _save(fig, "figB_random_forest_diagnostics.png")
-
-
-# ── Fig C — Prediction interval coverage (all 3 models) ──────────────────────
-
-def fig_C(y_te, results):
-    """
-    For each model: bar chart showing % of test obs within ±1, ±2, ±3, ±5 pp.
-    Gives a concrete sense of practical accuracy alongside R².
-    """
-    model_order = ["Ridge\n(Baseline)", "Gradient\nBoosting", "Random\nForest"]
-    colors      = [COL["lr"], COL["gb"], COL["rf"]]
-    thresholds  = [1, 2, 3, 5]
-    x           = np.arange(len(thresholds))
-    width       = 0.25
-
-    fig, ax = plt.subplots(figsize=(9, 5))
-
-    for i, (name, color) in enumerate(zip(model_order, colors)):
-        abs_err  = np.abs(y_te - results[name]["pred"])
-        coverage = [(abs_err <= t).mean() * 100 for t in thresholds]
-        bars     = ax.bar(x + i * width, coverage, width=width, color=color,
-                          edgecolor="white", label=name.replace("\n"," "), zorder=2)
-        for bar, val in zip(bars, coverage):
-            ax.text(bar.get_x() + bar.get_width() / 2,
-                    bar.get_height() + 0.8,
-                    f"{val:.0f}%", ha="center", fontsize=7.5)
-
-    ax.set_xticks(x + width)
-    ax.set_xticklabels([f"±{t} pp" for t in thresholds], fontsize=10)
-    ax.set_ylim(0, 110)
-    ax.axhline(100, color=COL["grey"], ls=":", lw=0.8, alpha=0.5)
-    ax.legend(fontsize=9, loc="upper left")
-    ax.grid(axis="y", alpha=0.15)
-    _style(ax,
-           "Prediction Interval Coverage — % of test obs within ±X pp",
-           "Error tolerance (pp)", "% of test observations within tolerance")
-
-    fig.tight_layout()
-    _save(fig, "figC_prediction_interval_coverage.png")
-
-
-# ── Fig D — Feature importance with cumulative coverage line ──────────────────
-
-def fig_D(rf_imp):
-    labels = [FEATURE_LABELS[k] for k in FEATURE_COLS]
-    vals   = [rf_imp[k] for k in FEATURE_COLS]
-    order  = np.argsort(vals)[::-1]   # descending
-
-    sorted_vals   = [vals[i]   for i in order]
-    sorted_labels = [labels[i] for i in order]
-    cumulative    = np.cumsum(sorted_vals) * 100
-
-    fig, ax1 = plt.subplots(figsize=(9, 5))
-    colors = [COL["rf"] if v >= sorted(vals)[-1] * 3 else COL["grey"]
-              for v in sorted_vals]
-    bars = ax1.bar(range(len(sorted_labels)), sorted_vals,
-                   color=colors, edgecolor="white", width=0.6, zorder=2)
-    for bar, val in zip(bars, sorted_vals):
-        ax1.text(bar.get_x() + bar.get_width() / 2,
-                 bar.get_height() + 0.003,
-                 f"{val:.3f}", ha="center", fontsize=8)
-
-    ax2 = ax1.twinx()
-    ax2.plot(range(len(sorted_labels)), cumulative,
-             color=COL["baseline"], marker="o", ms=5, lw=2,
-             label="Cumulative importance (%)")
-    ax2.axhline(80, color=COL["threshold"], ls="--", lw=1.2, alpha=0.7,
-                label="80% coverage")
-    ax2.set_ylim(0, 115)
-    ax2.set_ylabel("Cumulative importance (%)", fontsize=9, color=COL["baseline"])
-    ax2.tick_params(axis="y", labelcolor=COL["baseline"], labelsize=8)
-    ax2.spines["top"].set_visible(False)
-    l2, lb2 = ax2.get_legend_handles_labels()
-
-    ax1.axhline(1 / len(FEATURE_COLS), color=COL["grey"], ls=":",
-                lw=1.2, label="Uniform baseline (1/7)")
-    l1, lb1 = ax1.get_legend_handles_labels()
-    ax1.legend(l1 + l2, lb1 + lb2, fontsize=8, loc="center right")
-
-    ax1.set_xticks(range(len(sorted_labels)))
-    ax1.set_xticklabels(sorted_labels, fontsize=9, rotation=15, ha="right")
-    ax1.grid(axis="y", alpha=0.15)
-    _style(ax1,
-           "Random Forest Feature Importance with Cumulative Coverage",
-           "Feature", "Importance (mean decrease in impurity)")
-
-    fig.tight_layout()
-    _save(fig, "figD_feature_importance_cumulative.png")
-
-
-# ── Main ──────────────────────────────────────────────────────────────────────
-
-def main():
-    print("Loading data …")
-    panel = load_and_clean()
-
-    print("Training models …")
-    y_te, results, rf_imp = run_models(panel)
-
-    print("\nGenerating figures …")
-    fig_A(y_te, results)
-    fig_B(y_te, results)
-    fig_C(y_te, results)
-    fig_D(rf_imp)
-
-    print(f"\nDone — 4 figures saved to {FIG_DIR}/")
-    print("\nR² summary:")
-    for name, res in results.items():
-        label = name.replace("\n", " ")
-        print(f"  {label:<22} test R²={res['r2']:.4f}  CV R²={res['cv_mean']:.4f}±{res['cv_std']:.4f}  MAE={res['mae']:.4f}")
-
-
+    print(f"    Train: {len(X_train):,} obs | Test: {len(X_test):,} obs")
+ 
+    # 3b. Baseline
+    print("\n[3b] Baseline model (mean prediction) ...")
+    baseline = run_baseline(y_train, y_test)
+    print(
+        f"    Baseline R²: {baseline['r2']:.4f} "
+        f"(predicts mean = {baseline['train_mean']:.2f}% for every observation)"
+    )
+ 
+    # 4. Select best model
+    best_name, best_model, cv_log = select_best_model(X_train, y_train)
+ 
+    # 5. Evaluate on test set
+    print("\n[5] Evaluating on held-out test set ...")
+    y_pred     = best_model.predict(X_test)
+    primary_r2 = float(r2_score(y_test, y_pred))
+    passed     = primary_r2 >= R2_THRESHOLD
+    mae        = float(np.mean(np.abs(y_test - y_pred)))
+    rmse       = float(np.sqrt(np.mean((y_test - y_pred) ** 2)))
+    print(f"    Model            : {best_name}")
+    print(f"    Out-of-sample R² : {primary_r2:.4f} (threshold = {R2_THRESHOLD})")
+    print(f"    MAE              : {mae:.4f} pp")
+    print(f"    RMSE             : {rmse:.4f} pp")
+    print(f"    PASSED           : {passed}")
+ 
+    # 6. Hypothesis test
+    print("\n[6] Falsifiable hypothesis test ...")
+    hyp = test_hypothesis(panel)
+    print(f"    Median GDP-pc growth : {hyp['median_gdppc_growth_pct']:.2f}%")
+    print(f"    Mean unemp (below)   : {hyp['mean_unemp_below_median_pct']:.2f}%")
+    print(f"    Mean unemp (above)   : {hyp['mean_unemp_above_median_pct']:.2f}%")
+    print(
+        f"    Difference           : {hyp['difference_pp']:.2f} pp "
+        f"(need ≥ 1.5) → Supported: {hyp['hypothesis_supported']}"
+    )
+ 
+    # 7. Stratified estimates
+    print("\n[7] Stratified estimates across GDP per capita growth quartiles ...")
+    strat = stratified_estimates(panel)
+    for row in strat:
+        print(
+            f"    {row['quartile']:<12} n={row['n']:>4} "
+            f"mean={row['mean_unemp_pct']:.2f}% SE={row['se']:.3f}"
+        )
+ 
+    # 9. Feature importance
+    feat_imp = get_feature_importance(best_model, feature_cols)
+ 
+    # 10. Write pure JSON outputs
+    print("\n[8] Writing output files ...")
+    write_json(OUTPUTS / "primary_metric.json", {
+        "metric_name": "Out-of-sample R\u00b2",
+        "value":       round(primary_r2, 6),
+        "threshold":   R2_THRESHOLD,
+        "passed":      passed,
+        "model":       best_name,
+        "mae_pp":      round(mae,  4),
+        "rmse_pp":     round(rmse, 4),
+        "n_train":     int(len(X_train)),
+        "n_test":      int(len(X_test)),
+    })
+    write_json(OUTPUTS / "baseline_metric.json", {
+        "metric_name":             "Baseline Out-of-sample R\u00b2 (mean prediction)",
+        "value":                   round(baseline["r2"], 6),
+        "threshold":               0.0,
+        "passed":                  True,
+        "baseline_prediction_pct": round(baseline["train_mean"], 4),
+    })
+    write_json(OUTPUTS / "milestone_manifest.json", {
+        "project_title": "Can Macroeconomic Indicators Predict Unemployment Rates?",
+        "author":        "Apoorva Somani",
+        "course":        "ECO 6810",
+        "status":        "complete",
+        "data_source":   "World Bank WDI \u2014 data/Unemployment.xlsx (downloaded 2026-04-08)",
+        "data_note": (
+            "10 WDI sheets used: 1 outcome + 9 predictors. "
+            "gdp_per_capita_growth read directly from NY.GDP.PCAP.KD.ZG "
+            "(pre-computed by World Bank) — no pct_change() derivation. "
+            "fdi_inflows sign-log transformed. "
+            "Growth winsorised at 5th/95th pct before hypothesis test."
+        ),
+        "year_range":    [YEAR_START, YEAR_END],
+        "n_countries":   int(panel["country_code"].nunique()),
+        "n_obs_total":   int(len(panel)),
+        "n_train":       int(len(X_train)),
+        "n_test":        int(len(X_test)),
+        "features":      feature_cols,
+        "n_features":    len(feature_cols),
+        "best_model":    best_name,
+        "primary_r2":    round(primary_r2, 6),
+        "baseline_r2":   round(baseline["r2"], 6),
+        "threshold":     R2_THRESHOLD,
+        "passed":        passed,
+        "mae_pp":        round(mae,  4),
+        "rmse_pp":       round(rmse, 4),
+        "cv_results":    cv_log,
+        "hypothesis":    hyp,
+        "stratified_estimates": strat,
+        "feature_importance":   feat_imp,
+    })
+ 
+    # 11. Plots
+    print("\n[9] Generating plots ...")
+    save_plots(y_test, y_pred, panel, feat_imp, best_name)
+ 
+    # Summary
+    print("\n" + "=" * 65)
+    print("RESULTS SUMMARY")
+    print("=" * 65)
+    print(f"  Model            : {best_name}")
+    print(f"  Out-of-sample R² : {primary_r2:.4f} (need \u2265 {R2_THRESHOLD})")
+    print(f"  Baseline R²      : {baseline['r2']:.4f}")
+    print(f"  MAE              : {mae:.4f} percentage points")
+    print(f"  RMSE             : {rmse:.4f} percentage points")
+    print(f"  Project PASSED   : {passed}")
+    print(
+        f"  Hypothesis       : "
+        f"{'Supported' if hyp['hypothesis_supported'] else 'Not supported'} "
+        f"(diff = {hyp['difference_pp']:.2f} pp)"
+    )
+    print("=" * 65)
+    print("Output files:")
+    print("  outputs/primary_metric.json")
+    print("  outputs/baseline_metric.json")
+    print("  outputs/milestone_manifest.json")
+    print("  outputs/figures/actual_vs_predicted.png")
+    print("  outputs/figures/residuals.png")
+    print("  outputs/figures/feature_importance.png")
+    print("  outputs/figures/unemployment_by_gdp_growth_quartile.png")
+    print("=" * 65)
+ 
+ 
 if __name__ == "__main__":
     main()
