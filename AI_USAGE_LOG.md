@@ -9,12 +9,12 @@ The point is not to confess that you used AI. Of course you used AI. The point i
 | Date | Tool | What you used it for | What you verified yourself |
 |---|---|---|---|
 | YYYY-MM-DD | Claude / ChatGPT / Gemini / Copilot / other | Drafted a data-cleaning function | Re-ran the code, checked the output on 20 rows, fixed one wrong column mapping |
-| 2026-05-24 | Claude | Asked for a starting template to read a multi-sheet World Bank Excel file into a tidy long-format panel. It suggested using pd.read_excel with header=3 and a melt() call. | Opened the actual workbook, confirmed the header is on row 4 (index 3), checked that row counts per sheet matched what the WDI portal shows. Fixed the column rename — Claude used "Country Code" but the sheet had a trailing space; caught that by printing df.columns.|
-| 2026-05-25 | Claude | Asked for a one-liner to sign-log transform FDI inflows.| Checked a sample of negative FDI values (reversals) by hand to confirm the transform preserves sign and handles zero correctly. Verified the distribution before and after in a histogram.|
-| 2026-05-26| Claude | Asked it to sketch a 5-fold CV loop structure for three sklearn estimators.| Re-read the sklearn docs on cross_val_score to confirm scoring="r2" returns the correct sign convention. Ran the loop myself and compared CV scores against a manual train/val split to sanity-check.|
-| 2026-05-27| Claude | Asked it to suggest matplotlib code for a horizontal bar chart of feature importances. | Inspected the actual feature_importances_ array printed from the fitted model. The bar ordering in Claude's suggestion was ascending; changed it to descending to match standard presentation. Labels were generic — replaced with the actual WDI indicator names.|
-| 2026-05-28| Claude | Asked for help spotting why the hypothesis median was −31.28%. It flagged that pct_change() on levels produces NaN and extreme values for the first observation per country.| Traced this myself in a Colab cell: printed panel.groupby("country_code")["gdp_per_capita_growth"].head(2) and confirmed the first row per country was always NaN or extreme. Decided to fix it by reading NY.GDP.PCAP.KD.ZG directly from the WDI sheet instead of deriving growth from levels — Claude did not suggest this fix; I worked it out from reading the sheet indicator codes.|
-| 2026-05-29| Claude | Asked it to regenerate the JSON manifest template after the 10-indicator rewrite.| Compared every field against the actual console output line by line. Corrected n_obs_total, n_train, n_test, and baseline_r2 which did not match the printed run.|
+| 2026-05-24 | Claude | AAsked for a starting template to read a multi-sheet World Bank Excel file into a tidy long-format panel — specifically pd.read_excel with header=3 and a melt() call. | Opened the actual workbook and confirmed the header sits on row 4 (index 3). Checked printed row counts per sheet against the WDI portal. Found and fixed a column rename issue: the sheet had a trailing space in "Country Code" that Claude's template missed — caught by printing df.columns.|
+| 2026-05-25 | Claude | Asked for a one-liner to sign-log transform FDI inflows to handle zeros and negative reversal values.| Sampled five negative FDI rows by hand to confirm the transform preserves sign and handles zero correctly. Plotted the distribution before and after to confirm skew reduction.|
+| 2026-05-26| Claude | Asked it to outline a 5-fold CV loop for three sklearn estimators (Ridge, Random Forest, Gradient Boosting).| Re-read the sklearn docs on cross_val_score to confirm scoring="r2" uses the correct sign convention. Ran the loop and spot-checked one fold manually to confirm the scores were plausible.|
+| 2026-05-27| Claude | Asked it to suggest matplotlib code for a horizontal bar chart of feature importances. | Pulled the actual feature_importances_ array from the fitted model and confirmed values myself. Claude's version ordered bars ascending — changed to ascending-toward-top so the longest bar appears at the top. Replaced generic feature names with actual WDI indicator labels.|
+| 2026-05-28| Claude | Asked for help understanding why the hypothesis median was −31.28%. Claude identified that pct_change() on GDP levels returns NaN for the first country-year and extreme values for rebasings.| Traced it in Colab by printing panel.groupby("country_code")["gdp_per_capita_growth"].head(2) — confirmed first obs per country was always NaN or implausible. The fix — reading NY.GDP.PCAP.KD.ZG directly from the WDI sheet instead of deriving growth from levels — was my own decision after reading the sheet's indicator code. Claude did not suggest it. New median after fix: 2.21%.|
+| 2026-05-29| Claude | Asked it to regenerate the JSON manifest skeleton after expanding from 7 to 10 indicators.| Compared every field against the actual console output line by line. Found and corrected n_countries (185→183), n_obs_total (4,369→4,333), n_train (3,495→3,466), n_test (874→867), and baseline_r2. Added the cleaning block with exact median fills — school enrollment (1,410 filled) was absent from the first draft.|
 
 ## Things To Avoid
 
@@ -24,11 +24,11 @@ The point is not to confess that you used AI. Of course you used AI. The point i
 
 What was NOT taken from AI without verification
 
-The hypothesis null result and its interpretation were written after checking the actual printed median value (−31.5% in the original code).
-The explanation of the pct_change artifact was reasoned through independently and then confirmed with Claude as a consistency check.
-Feature importance rankings were read directly from the printed console output, not from Claude's suggested narrative.
-All metric values in the report (R², MAE, RMSE) were copied from the actual JSON output files, not from AI-generated text.
-
+The decision to use all 10 WDI sheets came from reading the original data description and checking which sheets were present in the downloaded workbook — not from any AI suggestion.
+The final R² of 0.6841, MAE of 2.34 pp, and RMSE of 3.30 pp were copied from the console output and JSON files, not from AI-generated text.
+The hypothesis null result (difference = −0.29 pp, opposite direction to the prediction) and its interpretation as a genuine cross-country empirical finding rather than an artifact were written after reading the printed output.
+The choice of Random Forest over Gradient Boosting was based on comparing the CV R² numbers in the console (0.6482 vs 0.6287), not on any AI recommendation.
+Feature importance rankings (labour force participation and urban population dominating) were read from the bar chart values, not from any AI summary.
 ## Better
 
 - "Claude suggested the first version of the FRED fetch helper; we changed the parsing after checking the missing-value handling"
