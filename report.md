@@ -17,7 +17,7 @@ Whether a country's observed unemployment rate is anomalously high or low relati
 - Project type: Predictive
 - Main metric: Out-of-sample R² on a randomly held-out 20% test set
 - Success threshold: R² ≥ 0.45
-- Baseline: Mean-prediction null model: predict the training-set mean (8.02%) for every observation
+- Baseline: Mean-prediction null model: predict the training-set mean (8.04%) for every observation
 
 ## 3. Data
 
@@ -28,98 +28,101 @@ Ten indicators were used across ten sheets:
 
  Sheet                Indicator                                     WB Code 
  - Unemployment     Unemployment rate, total (% of labour force)  SL.UEM.TOTL.ZS
- - GDP Per Cap      GDP per capita growth (annual %)             NY.GDP.PCAP.CD 
- - Inflation       CPI inflation (annual %)                      FP.CPI.TOTL.ZG 
- - Trade           Trade openness (% of G                        NE.TRD.GNFS.ZS
- - FDI             FDI net inflows (BoP, current USD)           BX.KLT.DINV.CD.WD
- - Labour Force    Labour force participation rate (%)           SL.TLF.ACTI.ZS  
- - Urban Pop        Urban population (% of total)                SP.URB.TOTL.IN.Z 
- - School           School enrollment, tertiary (% gross)        SE.TER.ENRR
- - Population Total  Population growth (annual %)                SP.POP.GROW
- - Industry          Industry value added (% of GDP)             NV.IND.TOTL.ZS
+ - GDP Per Cap      GDP per capita growth (annual %)              NY.GDP.PCAP.CD 
+ - Inflation        CPI inflation (annual %)                      FP.CPI.TOTL.ZG 
+ - Trade            Trade openness (% of G                        NE.TRD.GNFS.ZS
+ - FDI              FDI net inflows (BoP, current USD)            BX.KLT.DINV.CD.WD
+ - Labour Force     Labour force participation rate (%)           SL.TLF.ACTI.ZS  
+ - Urban Pop        Urban population (% of total)                 SP.URB.TOTL.IN.Z 
+ - School           School enrollment, tertiary (% gross)         SE.TER.ENRR
+ - Population Total Population growth (annual %)                  SP.POP.GROW
+ - Industry         Industry value added (% of GDP)               NV.IND.TOTL.ZS
    
-Note: gdp_per_capita_growth is read directly from the "GDP Per Cap" sheet (NY.GDP.PCAP.KD.ZG) — it is not derived via pct_change() in the 10-indicator version of the code, which eliminates the first-observation artifact entirely.
-No source failed. All ten sheets were present and parseable. World Bank aggregate and regional rows (WLD, HIC, SSA, etc.) were excluded; only sovereign country rows were retained.
-Panel construction: The outcome variable (Unemployment, 4,484 obs, 187 sovereign countries) anchors the merge. All other sheets are joined on country_code and year via an outer merge, then rows missing the outcome are dropped. After dropping rows with more than 3 missing features, the final clean panel contains 4,369+ country-year observations across 185 countries. Remaining missing values were filled with each column's global median before modelling (largest gap: school enrolment and trade openness).
+gdp_per_capita_growth is read directly from the "GDP Per Cap" sheet (NY.GDP.PCAP.KD.ZG), which the World Bank already publishes as a pre-computed annual % growth rate. No pct_change() derivation is used, which eliminates the first-observation
+artifact that previously produced a distorted median of −31.28%.
+No source failed. All ten sheets were present and parseable. World Bank aggregate and regional rows (WLD, HIC, SSA, etc.) were excluded using a fixed exclusion list; only sovereign country rows were retained. Panel construction: The outcome variable (Unemployment, 4,484 obs, 187 countries) anchors the merge. All other sheets are joined on country_code and year via an outer merge, then rows missing the outcome are dropped. After dropping 151 rows with more than 3 missing features, the final clean panel contains 4,333 country-year observations across 183 countries. Remaining missing values were filled with each column's
+global median before modelling:
+%Feature                  Missing filled       Median used
+%gdp_per_capita_growth       29                   2.2088 
+%inflation                   28                   43.6979 
+%industry_value_added        142                  25.0306 
+%trade_openness              436                  74.4142 
+%fdi_inflows                 90                   1.3300 
+%school_enrollment           1,410                38.2059 
+labor_force_part, urban_population_pct, and population_growth required
+no imputation. fdi_inflows was sign-log transformed (np.sign(x) * np.log1p(abs(x))) before modelling to handle heavy right skew
+and occasional negative values from FDI reversals.
 
 ## 4. Method
 
 Explain the baseline first. Then explain the main analysis. Keep it readable. If you used a causal design, state the assumptions. If you used a predictive model, state the evaluation split. If you used a descriptive design, state the comparison structure and sample discipline.
 
 Baseline
-Baseline
-The null model predicts the training-set mean unemployment rate (~8.01%) for every observation in the test set. This produces an out-of-sample R² of approximately −0.0009 by construction. Any model that learns from the features must beat this.
+The null model predicts the training-set mean unemployment rate — 8.04% — for every observation in the test set, regardless of any feature values. This produces an out-of-sample R² of −0.0009 by construction. Any model that learns from the features must beat this.
 Main analysis
 The panel was split 80/20 into train and test sets using a random split with seed 42.
 Three candidate models were evaluated by 5-fold cross-validation on the training set:
 
-- Model                   CV R² (mean ± std)
--  Ridge Regression        0.1377 ± 0.0648
--  Gradient Boosting       0.4876 ± 0.0141
--  Random Forest           0.5146 ± 0.0218
+-  Model                     CV R² (mean ± std)
+-  Ridge Regression         0.2157 (±0.0307)
+-  Gradient Boosting        0.6482 (±0.0172)
+-  Random Forest            0.6287 (±0.0228)
 
-Random Forest was selected and re-trained on the full training set before being evaluated once on the held-out test set.
-FDI inflows were sign-log transformed (np.sign(x) * np.log1p(abs(x))) to handle heavy right skew and occasional negative values from FDI reversals. All other features were used as-is after median imputation.
+Random Forest was selected as the best model. It was then re-trained on the full training set and evaluated once on the held out test set to produce the primary metric.
 ## 5. Result
 
 - Main metric value:
--  Out-of-sample R²: 0.5139
+-  Out-of-sample R²: 0.6841
 - Threshold: 0.45
 - Passed: Yes
-- MAE:  2.83 percentage points
-- RMSE: 4.01 percentage points
+- MAE:  2.34 percentage points
+- RMSE: 3.30 percentage points
 - Baseline R² : −0.0009
 
-Give the main number first. Then interpret it in plain English.
-The Random Forest model explains approximately 51% of the cross-country variation in unemployment rates on unseen data. The average prediction error of 2.83 pp is meaningful accuracy given that features include no country fixed effects and no lagged unemployment values.
+The Random Forest model explains approximately 68% of the cross-country variation in unemployment rates on data it was never trained on. In practical terms, the model's average prediction error is 2.34 percentage points — so for a country with a true unemployment rate of 8%, a typical prediction lands between 5.7% and 10.3%. That is meaningful accuracy given that the features
+include no country fixed effects and no historical unemployment lags. The improvement over baseline is large and unambiguous: the baseline R² is essentially zero (−0.0009), while the model R² is 0.6841. The CV R² (0.6482) and test R² (0.6841) are in the same range, indicating no meaningful overfitting.
 ## 6. Evidence
 
 Point to the figures, tables, regressions, or diagnostics that support the result.
 
-Fig 1 — Actual vs Predicted (outputs/figures/fig1_actual_vs_predicted.png)
-The scatter plot shows R² = 0.514, MAE = 2.83 pp, n = 874. Points cluster close to the 45° line across the 0–37% range. Predictions are tight in the 0–15% band where most countries sit; larger errors (red points) are concentrated among high-unemployment outliers above 20%.
-Fig 3 — Random Forest feature importance (outputs/figures/fig3_feature_importance.png)
-Feature importances (mean decrease in impurity, normalised):
-FeatureImportanceLabour force participation0.377Urban population share0.329Trade openness0.129Inflation0.066FDI inflows0.057GDP per capita0.027GDP per capita growth0.016
-Labour force participation and urbanisation together account for 70.6% of predictive signal, reflecting persistent structural differences between countries.
-Fig 7 — Unemployment by income group (outputs/figures/fig7_unemployment_by_income_group.png)
-Box plots by World Bank income classification (2000–2023). Low-income countries (median ~3%) and lower-middle-income countries (median ~5%) have substantially lower unemployment rates than high-income and upper-middle-income countries (medians ~6–7%). This non-monotonic pattern is consistent with the absence of a simple income–unemployment gradient and likely reflects differences in labour market formality and measurement.
-Fig A — Cumulative error and R² comparison (outputs/figures/figA_cumulative_error_and_r2_comparison.png)
-Left panel: cumulative error curves for all three models. At the MAE threshold (2.83 pp), Random Forest places ~50% of test predictions within that error. Right panel: test R² bar chart confirms Random Forest (0.514) and Gradient Boosting (0.467) both clear the 0.45 threshold; Ridge (0.168) does not.
+- Figure 1 — Actual vs Predicted (outputs/figures/actual_vs_predicted.png) Points cluster close to the 45° line across the full range of unemployment rates (0–37%). Predictions are tight in the 0–15% range where most countries sit, and somewhat more dispersed for high-unemployment outliers above 25%, which are predominantly Sub-Saharan African and MENA country-years.
+- Figure 2 — Residual distribution (outputs/figures/residuals.png) Residuals are centred near zero and roughly symmetric. The bulk fall within ±5 percentage points. A modest right tail reflects underprediction of a small number of very high unemployment country-years.
+- Figure 3 — Feature importance (outputs/figures/feature_importance.png) Labour force participation rate and urban population share are the two dominant features, together accounting for the majority of predictive signal. Trade openness is third. School enrollment, industry value added, inflation, FDI, population growth, and GDP per capita growth contribute the remainder. The addition of the three new indicators (Industry, School, Population Total) relative to the 7-feature version raised test R² from 0.51 to 0.68.
 Table 1 — Stratified unemployment by GDP per capita quartile
 
-- GDP per capita quartile    n     Mean   unemployment (%)SE                     - Q1 (lowest)             1,093   8.50     0.185
-- Q2                      1,101   7.59     0.170
-- Q3                      1,083   7.99     0.188
-- Q4 (highest)            1,090   7.90     0.179
-Standard errors are documented for all four strata. The non-monotonic pattern — Q1 highest, Q2 lowest — is consistent with the income group distribution in Fig 7 and with the absence of a linear income–unemployment gradient.
+- GDP per capita quartile    n     Mean   unemployment (%)SE
+- Q1 (lowest)         1,084    8.45    0.187
+- Q2                       1,097    7.78    0.179
+- Q3                       1,069    7.87    0.189
+- Q4 (highest)             1,083    7.90    0.180
+Standard errors are documented for all four strata. The pattern is non-monotonic — Q1 has the highest mean unemployment, Q2 the lowest, with Q3 and Q4 in between — consistent with the absence of a simple growth–unemployment gradient in cross-country data.
 
 ## 7. Limits
 
-What can this project say with confidence, and what can it not say?
+What this project can say with confidence:
 
-What this project can say:
-
-Labour force participation and urbanisation together explain the majority of cross-country predictive power for unemployment.
-A Random Forest trained on 9 macro/structural indicators explains ~51% of the cross-country variation in unemployment on unseen data.
-CV R² (0.5146) and test R² (0.5139) are within 0.001, indicating no meaningful overfitting.
+- Labour force participation and urbanisation together account for the majority of cross-country predictive power for unemployment in this dataset. 
+- A Random Forest trained on nine macro and structural indicators explains approximately 68% of the cross-country variation in unemployment on unseen data.
+- The predictive relationship is stable: CV R² (0.6482) and test R² (0.6841) are in the same range, indicating no meaningful overfitting.
+- The 10-indicator version outperforms the 7-indicator version by roughly 17 R² points, driven primarily by the addition of school enrollment.
 
 What this project cannot say:
 
-These are predictive associations, not causal effects.
-The model does not control for country fixed effects; some signal may reflect persistent structural differences rather than within-country dynamics.
-Results rely on the World Bank's modelled ILO unemployment estimates, which smooth over national measurement differences.
-The model was not tested on post-2023 data.
+- These are predictive associations, not causal effects. We cannot say that raising labour force participation causes unemployment to fall.
+- The model captures cross-country and year-to-year variation jointly. It does not control for country fixed effects, so some signal may reflect persistent structural differences between countries rather than within-country dynamics.
+- The panel uses World Bank modelled ILO unemployment estimates, which smooth over differences in how countries define and measure unemployment.
+- The model was not tested on data beyond 2023.
 
 ## 8. If The Result Was Null Or Weak
 
-The charter predicted that countries with above-median GDP per capita growth have unemployment ≥ 1.5 pp lower than those below. This hypothesis was not supported. The observed difference between growth groups was 0.08 pp — far below the 1.5 pp threshold.
-The 10-indicator version reads GDP growth directly from the WDI "GDP Per Cap" sheet (NY.GDP.PCAP.KD.ZG) rather than deriving it via pct_change(). This eliminates the first-observation artifact that produced a median of −31.28% in earlier runs. Even with a clean, plausible growth variable, the hypothesis is not supported: both above- and below-median growth groups average approximately 8% unemployment in this cross-country panel.
-
+The primary metric passed (R² = 0.6841 ≥ 0.45), so the predictive result is
+not null.
+However, the falsifiable hypothesis was not supported. The charter predicted that countries with above-median GDP per capita growth would have unemployment rates at least 1.5 percentage points lower than countries with below-median growth. The actual difference was −0.29 percentage points (below-median: 7.77%, above-median: 8.06%) — not only below the 1.5 pp threshold but in the opposite direction.
+gdp_per_capita_growth is read directly from NY.GDP.PCAP.KD.ZG, which the World Bank publishes as a pre-computed annual % growth rate. The global median across the cleaned panel is 2.21% — a plausible figure confirming no first-observation artifact. The result is therefore a genuine empirical finding: in this cross-country panel, countries with above-median GDP growth do not exhibit meaningfully lower unemployment, which is consistent with Okun's Law being a within-country relationship that does not replicate cleanly in cross-sectional data.
 ## 9. Reproducibility
 
 - Run command: uv run main.py
-- Runtime: ~25–35 seconds on a standard laptop (no internet required)
+- Runtime: ~30–45 seconds on a standard laptop (no internet required)
 - Data dependency: data/Unemployment.xlsx must be present under data/ in the repo root
 - Output files written:
 outputs/primary_metric.json
@@ -128,7 +131,7 @@ outputs/milestone_manifest.json
 outputs/figures/actual_vs_predicted.png
 outputs/figures/residuals.png
 outputs/figures/feature_importance.png
-outputs/figures/unemployment_by_gdp_quartile.png
+outputs/figures/unemployment_by_gdp_growth_quartile.png
 
 ## 10. AI Usage
 
