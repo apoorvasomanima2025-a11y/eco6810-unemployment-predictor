@@ -1,18 +1,19 @@
+
 {
   "project_title": "Can Macroeconomic Indicators Predict Unemployment Rates?",
   "author": "Apoorva Somani",
   "course": "ECO 6810",
   "status": "complete",
   "data_source": "World Bank WDI — data/Unemployment.xlsx (downloaded 2026-04-08)",
-  "data_note": "10 WDI sheets: 1 outcome + 9 predictors. gdp_per_capita_growth read directly from NY.GDP.PCAP.KD.ZG (pre-computed by World Bank, no pct_change). fdi_inflows sign-log transformed. Growth winsorised at 5th/95th pct before hypothesis test.",
+  "data_note": "10 WDI sheets: 1 outcome + 9 predictors. gdp_per_capita_growth read directly from NY.GDP.PCAP.KD.ZG (pre-computed annual % by World Bank, no pct_change). fdi_inflows sign-log transformed. Growth winsorised at 5th/95th percentile before hypothesis test.",
   "year_range": [
     2000,
     2023
   ],
-  "n_countries": 185,
-  "n_obs_total": 4369,
-  "n_train": 3495,
-  "n_test": 874,
+  "n_countries": 183,
+  "n_obs_total": 4333,
+  "n_train": 3466,
+  "n_test": 867,
   "n_features": 9,
   "features": [
     "gdp_per_capita_growth",
@@ -28,108 +29,157 @@
   "sheets_used": {
     "Unemployment": {
       "wb_code": "SL.UEM.TOTL.ZS",
+      "obs": 4484,
+      "countries": 187,
       "role": "outcome"
     },
     "GDP Per Cap": {
       "wb_code": "NY.GDP.PCAP.KD.ZG",
+      "obs": 4967,
+      "countries": 214,
       "role": "feature",
       "col": "gdp_per_capita_growth"
     },
     "Inflation": {
       "wb_code": "FP.CPI.TOTL.ZG",
+      "obs": 4345,
+      "countries": 193,
       "role": "feature",
       "col": "inflation"
     },
     "Industry": {
       "wb_code": "NV.IND.TOTL.ZS",
+      "obs": 4686,
+      "countries": 207,
       "role": "feature",
       "col": "industry_value_added"
     },
     "Trade": {
       "wb_code": "NE.TRD.GNFS.ZS",
+      "obs": 4252,
+      "countries": 191,
       "role": "feature",
       "col": "trade_openness"
     },
     "FDI": {
       "wb_code": "BX.KLT.DINV.WD.GD.ZS",
+      "obs": 4634,
+      "countries": 202,
       "role": "feature",
       "col": "fdi_inflows"
     },
     "Labour Force": {
       "wb_code": "SL.TLF.ACTI.ZS",
+      "obs": 4484,
+      "countries": 187,
       "role": "feature",
       "col": "labor_force_part"
     },
     "Urban Pop": {
       "wb_code": "SP.URB.TOTL.IN.ZS",
+      "obs": 5208,
+      "countries": 217,
       "role": "feature",
       "col": "urban_population_pct"
     },
     "School": {
       "wb_code": "SE.TER.ENRR",
+      "obs": 3087,
+      "countries": 194,
       "role": "feature",
       "col": "school_enrollment"
     },
     "Population Total": {
       "wb_code": "SP.POP.GROW",
+      "obs": 5207,
+      "countries": 217,
       "role": "feature",
       "col": "population_growth"
     }
   },
+  "cleaning": {
+    "rows_dropped_gt3_missing": 151,
+    "median_fills": {
+      "gdp_per_capita_growth": {
+        "n": 29,
+        "median": 2.2088
+      },
+      "inflation": {
+        "n": 284,
+        "median": 3.6979
+      },
+      "industry_value_added": {
+        "n": 142,
+        "median": 25.0306
+      },
+      "trade_openness": {
+        "n": 436,
+        "median": 74.4142
+      },
+      "fdi_inflows": {
+        "n": 90,
+        "median": 1.33
+      },
+      "school_enrollment": {
+        "n": 1410,
+        "median": 38.2059
+      }
+    }
+  },
   "best_model": "Random Forest",
-  "primary_r2": 0.5139,
-  "baseline_r2": -0.000878,
+  "primary_r2": 0.6841,
+  "baseline_r2": -0.0009,
   "threshold": 0.45,
   "passed": true,
-  "mae_pp": 2.8276,
-  "rmse_pp": 4.0083,
+  "mae_pp": 2.3397,
+  "rmse_pp": 3.2955,
   "cv_results": {
     "Ridge Regression": {
-      "mean": 0.1377,
-      "std": 0.0648
+      "mean": 0.2157,
+      "std": 0.0307
     },
     "Random Forest": {
-      "mean": 0.5146,
-      "std": 0.0218
+      "mean": 0.6482,
+      "std": 0.0172
     },
     "Gradient Boosting": {
-      "mean": 0.4876,
-      "std": 0.0141
+      "mean": 0.6287,
+      "std": 0.0228
     }
   },
   "hypothesis": {
-    "median_gdppc_growth_pct": 2.8341,
-    "mean_unemp_below_median_pct": 8.04,
-    "mean_unemp_above_median_pct": 7.96,
-    "difference_pp": 0.08,
+    "median_gdppc_growth_pct": 2.21,
+    "mean_unemp_below_median_pct": 7.77,
+    "mean_unemp_above_median_pct": 8.06,
+    "difference_pp": -0.29,
     "threshold_pp": 1.5,
     "hypothesis_supported": false,
-    "note": "Growth read directly from NY.GDP.PCAP.KD.ZG — no pct_change. Winsorised at 5th/95th pct. Hypothesis not supported: difference well below 1.5 pp threshold."
+    "note": "Growth read directly from NY.GDP.PCAP.KD.ZG. Median is 2.21% — plausible, no artifact. Difference is -0.29 pp (opposite sign), well below 1.5 pp threshold. Not supported."
   },
   "stratified_estimates": [
     {
       "quartile": "Q1_lowest",
-      "n": 1093,
-      "mean_unemp_pct": 8.5,
-      "se": 0.185
+      "n": 1084,
+      "mean_unemp_pct": 8.45,
+      "se": 0.187
     },
     {
       "quartile": "Q2",
-      "n": 1101,
-      "mean_unemp_pct": 7.59,
-      "se": 0.17
+      "n": 1097,
+      "mean_unemp_pct": 7.78,
+      "se": 0.179
     },
     {
       "quartile": "Q3",
-      "n": 1083,
-      "mean_unemp_pct": 7.99,
-      "se": 0.188
+      "n": 1069,
+      "mean_unemp_pct": 7.87,
+      "se": 0.189
     },
     {
       "quartile": "Q4_highest",
-      "n": 1092,
+      "n": 1083,
       "mean_unemp_pct": 7.9,
-      "se": 0.179
+      "se": 0.18
     }
   ]
 }
