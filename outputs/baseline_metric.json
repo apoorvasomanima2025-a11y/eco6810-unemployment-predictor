@@ -1,7 +1,7 @@
 {
   "metric_name": "Baseline Out-of-sample R² (mean prediction)",
-  "value": -0.0009,
+  "value": -0.000889,
   "threshold": 0,
   "passed": true,
-  "baseline_prediction_pct": 8.04
+  "baseline_prediction_pct": 8.0369
 }
