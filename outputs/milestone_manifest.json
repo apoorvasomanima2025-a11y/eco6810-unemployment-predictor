@@ -5,7 +5,7 @@
   "course": "ECO 6810",
   "status": "complete",
   "data_source": "World Bank WDI — data/Unemployment.xlsx (downloaded 2026-04-08)",
-  "data_note": "10 WDI sheets: 1 outcome + 9 predictors. gdp_per_capita_growth read directly from NY.GDP.PCAP.KD.ZG (pre-computed annual % by World Bank, no pct_change). fdi_inflows sign-log transformed. Growth winsorised at 5th/95th percentile before hypothesis test.",
+  "data_note": "10 WDI sheets: 1 outcome + 9 predictors. gdp_per_capita_growth read directly from NY.GDP.PCAP.KD.ZG. fdi_inflows sign-log transformed. Two validation checks: random 80/20 (primary) and temporal split train 2000-2018 / test 2019-2023.",
   "year_range": [
     2000,
     2023
@@ -26,109 +26,9 @@
     "school_enrollment",
     "population_growth"
   ],
-  "sheets_used": {
-    "Unemployment": {
-      "wb_code": "SL.UEM.TOTL.ZS",
-      "obs": 4484,
-      "countries": 187,
-      "role": "outcome"
-    },
-    "GDP Per Cap": {
-      "wb_code": "NY.GDP.PCAP.KD.ZG",
-      "obs": 4967,
-      "countries": 214,
-      "role": "feature",
-      "col": "gdp_per_capita_growth"
-    },
-    "Inflation": {
-      "wb_code": "FP.CPI.TOTL.ZG",
-      "obs": 4345,
-      "countries": 193,
-      "role": "feature",
-      "col": "inflation"
-    },
-    "Industry": {
-      "wb_code": "NV.IND.TOTL.ZS",
-      "obs": 4686,
-      "countries": 207,
-      "role": "feature",
-      "col": "industry_value_added"
-    },
-    "Trade": {
-      "wb_code": "NE.TRD.GNFS.ZS",
-      "obs": 4252,
-      "countries": 191,
-      "role": "feature",
-      "col": "trade_openness"
-    },
-    "FDI": {
-      "wb_code": "BX.KLT.DINV.WD.GD.ZS",
-      "obs": 4634,
-      "countries": 202,
-      "role": "feature",
-      "col": "fdi_inflows"
-    },
-    "Labour Force": {
-      "wb_code": "SL.TLF.ACTI.ZS",
-      "obs": 4484,
-      "countries": 187,
-      "role": "feature",
-      "col": "labor_force_part"
-    },
-    "Urban Pop": {
-      "wb_code": "SP.URB.TOTL.IN.ZS",
-      "obs": 5208,
-      "countries": 217,
-      "role": "feature",
-      "col": "urban_population_pct"
-    },
-    "School": {
-      "wb_code": "SE.TER.ENRR",
-      "obs": 3087,
-      "countries": 194,
-      "role": "feature",
-      "col": "school_enrollment"
-    },
-    "Population Total": {
-      "wb_code": "SP.POP.GROW",
-      "obs": 5207,
-      "countries": 217,
-      "role": "feature",
-      "col": "population_growth"
-    }
-  },
-  "cleaning": {
-    "rows_dropped_gt3_missing": 151,
-    "median_fills": {
-      "gdp_per_capita_growth": {
-        "n": 29,
-        "median": 2.2088
-      },
-      "inflation": {
-        "n": 284,
-        "median": 3.6979
-      },
-      "industry_value_added": {
-        "n": 142,
-        "median": 25.0306
-      },
-      "trade_openness": {
-        "n": 436,
-        "median": 74.4142
-      },
-      "fdi_inflows": {
-        "n": 90,
-        "median": 1.33
-      },
-      "school_enrollment": {
-        "n": 1410,
-        "median": 38.2059
-      }
-    }
-  },
   "best_model": "Random Forest",
   "primary_r2": 0.6841,
-  "baseline_r2": -0.0009,
+  "baseline_r2": -0.000889,
   "threshold": 0.45,
   "passed": true,
   "mae_pp": 2.3397,
@@ -147,6 +47,117 @@
       "std": 0.0228
     }
   },
+  "temporal_validation": {
+    "n_train": 3438,
+    "n_test": 895,
+    "train_years": "2000-2018",
+    "test_years": "2019-2023",
+    "r2": 0.3612,
+    "mae_pp": 3.4003,
+    "rmse_pp": 4.6935,
+    "baseline_r2": -0.0132,
+    "note": "Test period 2019-2023 includes the 2020 COVID shock. R2 falls from 0.68 (random) to 0.36 (temporal). Temporal baseline is also near zero so the model still explains substantially more than mean prediction."
+  },
+  "feature_importance": {
+    "gini_mdi": {
+      "labor_force_part": 0.2552,
+      "urban_population_pct": 0.2377,
+      "population_growth": 0.1889,
+      "industry_value_added": 0.1123,
+      "trade_openness": 0.0723,
+      "school_enrollment": 0.0623,
+      "inflation": 0.0281,
+      "fdi_inflows": 0.0278,
+      "gdp_per_capita_growth": 0.0155
+    },
+    "permutation": {
+      "labor_force_part": {
+        "mean": 0.639,
+        "std": 0.0324
+      },
+      "urban_population_pct": {
+        "mean": 0.4145,
+        "std": 0.0146
+      },
+      "population_growth": {
+        "mean": 0.3168,
+        "std": 0.0295
+      },
+      "industry_value_added": {
+        "mean": 0.1403,
+        "std": 0.0099
+      },
+      "trade_openness": {
+        "mean": 0.0909,
+        "std": 0.0065
+      },
+      "school_enrollment": {
+        "mean": 0.0732,
+        "std": 0.0072
+      },
+      "fdi_inflows": {
+        "mean": 0.0257,
+        "std": 0.0032
+      },
+      "inflation": {
+        "mean": 0.0177,
+        "std": 0.0019
+      },
+      "gdp_per_capita_growth": {
+        "mean": 0.0109,
+        "std": 0.001
+      }
+    },
+    "bootstrap_stability": {
+      "labor_force_part": {
+        "mean": 0.271,
+        "std": 0.023
+      },
+      "urban_population_pct": {
+        "mean": 0.2191,
+        "std": 0.0124
+      },
+      "population_growth": {
+        "mean": 0.1835,
+        "std": 0.0173
+      },
+      "industry_value_added": {
+        "mean": 0.0997,
+        "std": 0.0155
+      },
+      "trade_openness": {
+        "mean": 0.069,
+        "std": 0.0063
+      },
+      "school_enrollment": {
+        "mean": 0.0623,
+        "std": 0.0104
+      },
+      "fdi_inflows": {
+        "mean": 0.0356,
+        "std": 0.0078
+      },
+      "inflation": {
+        "mean": 0.0368,
+        "std": 0.0055
+      },
+      "gdp_per_capita_growth": {
+        "mean": 0.0231,
+        "std": 0.0038
+      }
+    },
+    "gradient_boosting_gini": {
+      "labor_force_part": 0.2702,
+      "urban_population_pct": 0.247,
+      "population_growth": 0.1807,
+      "industry_value_added": 0.1074,
+      "trade_openness": 0.0686,
+      "school_enrollment": 0.0572,
+      "inflation": 0.0324,
+      "fdi_inflows": 0.0221,
+      "gdp_per_capita_growth": 0.0143
+    }
+  },
   "hypothesis": {
     "median_gdppc_growth_pct": 2.21,
     "mean_unemp_below_median_pct": 7.77,
@@ -154,7 +165,7 @@
     "difference_pp": -0.29,
     "threshold_pp": 1.5,
     "hypothesis_supported": false,
-    "note": "Growth read directly from NY.GDP.PCAP.KD.ZG. Median is 2.21% — plausible, no artifact. Difference is -0.29 pp (opposite sign), well below 1.5 pp threshold. Not supported."
+    "note": "Difference is -0.29 pp (opposite direction). GDP growth is consistently the least important feature across all three importance methods. Unemployment in this cross-country panel is driven by structural factors, not short-run growth cycles."
   },
   "stratified_estimates": [
     {
