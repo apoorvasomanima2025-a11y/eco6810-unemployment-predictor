@@ -24,11 +24,12 @@ The point is not to confess that you used AI. Of course you used AI. The point i
 
 What was NOT taken from AI without verification
 
-The decision to use all 10 WDI sheets came from reading the original data description and checking which sheets were present in the downloaded workbook — not from any AI suggestion.
-The final R² of 0.6841, MAE of 2.34 pp, and RMSE of 3.30 pp were copied from the console output and JSON files, not from AI-generated text.
-The hypothesis null result (difference = −0.29 pp, opposite direction to the prediction) and its interpretation as a genuine cross-country empirical finding rather than an artifact were written after reading the printed output.
-The choice of Random Forest over Gradient Boosting was based on comparing the CV R² numbers in the console (0.6482 vs 0.6287), not on any AI recommendation.
-Feature importance rankings (labour force participation and urban population dominating) were read from the bar chart values, not from any AI summary.
+The decision to add temporal validation, and the framing of the 2020 COVID shock as the reason for the R² drop (0.68 → 0.36), was made independently after reading the instructor feedback — not suggested by Claude.
+The economic interpretation — that Okun's Law is a within-country time-series relationship that does not replicate in cross-section — was written from first principles after seeing the −0.29 pp hypothesis result.
+Claude was not asked to interpret this.
+The final R² of 0.6841, MAE 2.34 pp, temporal R² 0.3612, and all stratified estimates were copied from the console output and JSON files, not from AI-generated text.
+The ranking of features (labour force part. → urban pop. → population growth) was read from the bar chart and importance tables, verified across all three methods, not from any AI summary.
+The choice of Random Forest over Gradient Boosting was based on comparing CV R² numbers (0.6482 vs 0.6287) in the console.
 ## Better
 
 - "Claude suggested the first version of the FRED fetch helper; we changed the parsing after checking the missing-value handling"
