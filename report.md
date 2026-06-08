@@ -104,7 +104,7 @@ Point to the figures, tables, regressions, or diagnostics that support the resul
 Table 1 — Stratified unemployment by GDP per capita quartile
 
 - GDP per capita quartile    n     Mean   unemployment (%)SE
-- Q1 (lowest)         1,084    8.45    0.187
+- Q1 (lowest)              1,084    8.45    0.187
 - Q2                       1,097    7.78    0.179
 - Q3                       1,069    7.87    0.189
 - Q4 (highest)             1,083    7.90    0.180
@@ -158,13 +158,13 @@ GDP growth is a weak predictor in this cross-country panel. This does not mean g
 - Runtime: ~60–90 seconds on a Google Colab (permutation importance adds time)
 - Data dependency: data/Unemployment.xlsx must be present under data/ in the repo root
 - Output files written:
-outputs/primary_metric.json
-outputs/baseline_metric.json
-outputs/milestone_manifest.json
-outputs/figures/actual_vs_predicted.png
-outputs/figures/residuals.png
-outputs/figures/feature_importance.png
-outputs/figures/unemployment_by_gdp_growth_quartile.png
+- outputs/primary_metric.json
+- outputs/baseline_metric.json
+- outputs/milestone_manifest.json
+- outputs/figures/actual_vs_predicted.png
+- outputs/figures/residuals.png
+- outputs/figures/feature_importance.png
+- outputs/figures/unemployment_by_gdp_growth_quartile.png
 
 ## 10. AI Usage
 
