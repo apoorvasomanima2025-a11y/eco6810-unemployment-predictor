@@ -1,32 +1,32 @@
 from __future__ import annotations
- 
+
 """
 ECO 6810 Final Project — upgraded final submission
 Title  : Can Macroeconomic Indicators Predict Unemployment Rates?
 Author : Apoorva Somani
 Run    : uv run main.py
 Data   : data/Unemployment.xlsx  (World Bank WDI, downloaded 2026-04-08)
- 
+
 Validation strategy (two independent checks):
   Primary   — random 80/20 split (seed=42), R² = 0.6841
   Temporal  — train 2000–2018, test 2019–2023,  R² = 0.3612
               The temporal drop is honest: the test period includes the
               2020 COVID shock, which the model was never trained on.
- 
+
 Feature importance — three methods for stability:
   Gini (MDI)          — fast, computed from training splits
   Permutation         — model-agnostic, computed on the test set
   Bootstrap resample  — 5 resamples of the training set, shows rank variance
- 
+
 All three methods agree on the same top-3 features:
   labour_force_part > urban_population_pct > population_growth
- 
+
 IMPORTANT — predictive, not causal:
   This model predicts unemployment from macro indicators. It does not establish
   causal effects. Feature importance reflects predictive association, not
   causal contribution. Do not use this model to claim that changing any one
   indicator will cause unemployment to move.
- 
+
 Outputs written to outputs/
     primary_metric.json
     baseline_metric.json
@@ -37,12 +37,12 @@ Outputs written to outputs/
     figures/temporal_validation.png
     figures/unemployment_by_gdp_growth_quartile.png
 """
- 
+
 import json
 import warnings
 from functools import reduce
 from pathlib import Path
- 
+
 import numpy as np
 import pandas as pd
 from sklearn.ensemble import GradientBoostingRegressor, RandomForestRegressor
@@ -52,15 +52,15 @@ from sklearn.metrics import r2_score, mean_absolute_error
 from sklearn.model_selection import cross_val_score, train_test_split
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
- 
+
 warnings.filterwarnings("ignore")
- 
+
 # ── Config ────────────────────────────────────────────────────────────────────
- 
-DATA_PATH    = Path("data/Unemployment.xlsx")
+
+DATA_PATH    = Path("/content/Unemployment.xlsx")
 OUTPUTS      = Path("outputs")
 OUTPUTS.mkdir(exist_ok=True)
- 
+
 YEAR_START   = 2000
 YEAR_END     = 2023
 TEMPORAL_CUT = 2018          # train ≤ this year; test ≥ year after
@@ -68,7 +68,7 @@ TEST_SIZE    = 0.20
 SEED         = 42
 R2_THRESHOLD = 0.45
 TARGET       = "unemployment_rate"
- 
+
 WB_AGGREGATES = {
     "AFE","AFW","ARB","CEB","CSS","EAP","EAR","EAS","ECA","ECS",
     "EMU","EUU","FCS","HIC","HPC","IBD","IBT","IDA","IDB","IDX",
@@ -76,7 +76,7 @@ WB_AGGREGATES = {
     "NAC","OED","OSS","PRE","PSS","PST","SAS","SSA","SSF","SST",
     "TEA","TEC","TLA","TMN","TSA","TSS","UMC","WLD","INX",
 }
- 
+
 SHEETS = {
     "Unemployment":     "unemployment_rate",     # SL.UEM.TOTL.ZS  — outcome
     "GDP Per Cap":      "gdp_per_capita_growth", # NY.GDP.PCAP.KD.ZG
@@ -89,7 +89,7 @@ SHEETS = {
     "School":           "school_enrollment",     # SE.TER.ENRR
     "Population Total": "population_growth",     # SP.POP.GROW
 }
- 
+
 FEATURE_COLS = [
     "gdp_per_capita_growth",
     "inflation",
@@ -101,7 +101,7 @@ FEATURE_COLS = [
     "school_enrollment",
     "population_growth",
 ]
- 
+
 FEATURE_LABELS = {
     "gdp_per_capita_growth": "GDP pc growth",
     "inflation":             "Inflation",
@@ -113,10 +113,10 @@ FEATURE_LABELS = {
     "school_enrollment":     "School enrollment",
     "population_growth":     "Population growth",
 }
- 
- 
+
+
 # ── 1. Data loading ───────────────────────────────────────────────────────────
- 
+
 def parse_sheet(path: Path, sheet_name: str, col_name: str) -> pd.DataFrame:
     df = pd.read_excel(path, sheet_name=sheet_name, header=3)
     df = df.rename(columns={
@@ -132,8 +132,8 @@ def parse_sheet(path: Path, sheet_name: str, col_name: str) -> pd.DataFrame:
     df = df.melt(id_vars="country_code", var_name="year", value_name=col_name)
     df["year"] = df["year"].astype(int)
     return df.dropna(subset=[col_name])
- 
- 
+
+
 def load_panel() -> pd.DataFrame:
     print(f"\n[1] Loading data from {DATA_PATH} ...")
     frames = []
@@ -156,10 +156,10 @@ def load_panel() -> pd.DataFrame:
         f"({panel['year'].min()}–{panel['year'].max()})"
     )
     return panel
- 
- 
+
+
 # ── 2. Cleaning ───────────────────────────────────────────────────────────────
- 
+
 def clean(panel: pd.DataFrame) -> tuple[pd.DataFrame, list[str]]:
     print("\n[2] Cleaning features ...")
     panel = panel.sort_values(["country_code", "year"]).copy()
@@ -185,10 +185,10 @@ def clean(panel: pd.DataFrame) -> tuple[pd.DataFrame, list[str]]:
         f"{panel['country_code'].nunique()} countries"
     )
     return panel, FEATURE_COLS
- 
- 
+
+
 # ── 3. Baseline ───────────────────────────────────────────────────────────────
- 
+
 def run_baseline(y_train: np.ndarray, y_test: np.ndarray) -> dict:
     train_mean = float(y_train.mean())
     y_pred     = np.full(len(y_test), train_mean)
@@ -197,10 +197,10 @@ def run_baseline(y_train: np.ndarray, y_test: np.ndarray) -> dict:
         "train_mean":  train_mean,
         "predictions": y_pred,
     }
- 
- 
+
+
 # ── 4. Model selection via 5-fold CV ─────────────────────────────────────────
- 
+
 CANDIDATES = {
     "Ridge Regression": Pipeline([
         ("scaler", StandardScaler()),
@@ -215,8 +215,8 @@ CANDIDATES = {
         subsample=0.8, random_state=SEED,
     ),
 }
- 
- 
+
+
 def select_best_model(
     X_train: np.ndarray, y_train: np.ndarray
 ) -> tuple[str, object, dict]:
@@ -237,10 +237,10 @@ def select_best_model(
     print(f"    → Best: {best_name} (CV R² = {best_score:.4f})")
     best_model.fit(X_train, y_train)
     return best_name, best_model, cv_log
- 
- 
+
+
 # ── 5. Temporal validation ────────────────────────────────────────────────────
- 
+
 def temporal_validation(
     panel: pd.DataFrame, feature_cols: list[str]
 ) -> dict:
@@ -252,26 +252,26 @@ def temporal_validation(
     print(f"\n[5b] Temporal validation — train ≤{TEMPORAL_CUT}, test ≥{TEMPORAL_CUT+1} ...")
     train_t = panel[panel["year"] <= TEMPORAL_CUT]
     test_t  = panel[panel["year"] >  TEMPORAL_CUT]
- 
+
     X_tr = train_t[feature_cols].values
     y_tr = train_t[TARGET].values
     X_te = test_t[feature_cols].values
     y_te = test_t[TARGET].values
- 
+
     rf_t = RandomForestRegressor(
         n_estimators=200, max_depth=8, min_samples_leaf=5,
         random_state=SEED, n_jobs=-1,
     )
     rf_t.fit(X_tr, y_tr)
     y_pred_t  = rf_t.predict(X_te)
- 
+
     r2_t   = float(r2_score(y_te, y_pred_t))
     mae_t  = float(mean_absolute_error(y_te, y_pred_t))
     rmse_t = float(np.sqrt(np.mean((y_te - y_pred_t) ** 2)))
- 
+
     bl_pred_t = np.full(len(y_te), float(y_tr.mean()))
     bl_r2_t   = float(r2_score(y_te, bl_pred_t))
- 
+
     print(f"    Train: {len(X_tr):,} obs ({train_t['year'].min()}–{train_t['year'].max()})")
     print(f"    Test : {len(X_te):,} obs ({test_t['year'].min()}–{test_t['year'].max()})")
     print(f"    Temporal R²       : {r2_t:.4f}")
@@ -282,7 +282,7 @@ def temporal_validation(
         f"    Note: test period includes 2020 COVID shock — "
         f"temporal drop is expected and honest."
     )
- 
+
     return {
         "n_train":        int(len(X_tr)),
         "n_test":         int(len(X_te)),
@@ -301,13 +301,13 @@ def temporal_validation(
             "not model failure — temporal baseline is also near zero."
         ),
     }
- 
- 
+
+
 # ── 6. Bootstrap stability for feature importance ─────────────────────────────
 # Gini (MDI) and permutation importance are computed inline in main().
 # This function adds a stability check: run Gini across 5 bootstrap
 # resamples of the training data and report mean ± std per feature.
- 
+
 def compute_bootstrap(
     X_train: np.ndarray, y_train: np.ndarray, feature_cols: list[str]
 ) -> dict:
@@ -329,10 +329,10 @@ def compute_bootstrap(
         }
         for i, k in enumerate(feature_cols)
     }
- 
- 
+
+
 # ── 7. Hypothesis test ────────────────────────────────────────────────────────
- 
+
 def test_hypothesis(panel: pd.DataFrame) -> dict:
     valid = panel.dropna(subset=["gdp_per_capita_growth"]).copy()
     p5    = valid["gdp_per_capita_growth"].quantile(0.05)
@@ -357,10 +357,10 @@ def test_hypothesis(panel: pd.DataFrame) -> dict:
             "demographics), not by short-run growth cycles."
         ),
     }
- 
- 
+
+
 # ── 8. Stratified estimates ───────────────────────────────────────────────────
- 
+
 def stratified_estimates(panel: pd.DataFrame) -> list[dict]:
     p = panel.dropna(subset=["gdp_per_capita_growth"]).copy()
     p["gdp_growth_q"] = pd.qcut(
@@ -378,10 +378,10 @@ def stratified_estimates(panel: pd.DataFrame) -> list[dict]:
             "se":             round(float(g.std() / len(g) ** 0.5), 4),
         })
     return out
- 
- 
+
+
 # ── 9. Plots ──────────────────────────────────────────────────────────────────
- 
+
 def save_plots(
     y_te_rand, y_pred_rand,
     y_te_temp, y_pred_temp,
@@ -392,13 +392,13 @@ def save_plots(
         import matplotlib
         matplotlib.use("Agg")
         import matplotlib.pyplot as plt
- 
+
         fig_dir = OUTPUTS / "figures"
         fig_dir.mkdir(parents=True, exist_ok=True)
- 
+
         mae_rand = float(np.mean(np.abs(y_te_rand - y_pred_rand)))
         res_rand = y_te_rand - y_pred_rand
- 
+
         # Fig 1 — Actual vs Predicted (random split)
         fig, ax = plt.subplots(figsize=(7, 6))
         sc = ax.scatter(
@@ -440,7 +440,7 @@ def save_plots(
         fig.tight_layout()
         fig.savefig(fig_dir / "actual_vs_predicted.png", dpi=150)
         plt.close(fig)
- 
+
         # Fig 2 — Residuals histogram
         fig, ax = plt.subplots(figsize=(7, 4))
         _, bins, patches = ax.hist(res_rand, bins=45, edgecolor="white", lw=0.5)
@@ -461,7 +461,7 @@ def save_plots(
         fig.tight_layout()
         fig.savefig(fig_dir / "residuals.png", dpi=150)
         plt.close(fig)
- 
+
         # Fig 3 — Feature importance: Gini vs Permutation vs GB Gini
         labels_ord = sorted(
             FEATURE_COLS, key=lambda k: gini[k], reverse=False
@@ -473,11 +473,11 @@ def save_plots(
         perm_e   = [perm[k]["std"]  for k in labels_ord]
         gb_v     = [gb_imp[k] for k in labels_ord]
         lbl_disp = [FEATURE_LABELS[k] for k in labels_ord]
- 
+
         # Normalise permutation to [0,1] for visual comparison
         perm_total = sum(perm_v)
         perm_norm  = [v / perm_total for v in perm_v]
- 
+
         fig, ax = plt.subplots(figsize=(10, 6))
         ax.barh(x - width, gini_v,    width, color="#534AB7", label="RF Gini (MDI)")
         ax.barh(x,         perm_norm, width, color="#1D9E75", label="RF Permutation (normalised)")
@@ -498,12 +498,12 @@ def save_plots(
         fig.tight_layout()
         fig.savefig(fig_dir / "feature_importance_comparison.png", dpi=150)
         plt.close(fig)
- 
+
         # Fig 4 — Temporal validation: actual vs predicted 2019-2023
         res_temp = y_te_temp - y_pred_temp
         mae_temp = float(np.mean(np.abs(res_temp)))
         r2_temp  = float(r2_score(y_te_temp, y_pred_temp))
- 
+
         fig, ax = plt.subplots(figsize=(7, 6))
         sc = ax.scatter(
             y_te_temp, y_pred_temp,
@@ -537,7 +537,7 @@ def save_plots(
         fig.tight_layout()
         fig.savefig(fig_dir / "temporal_validation.png", dpi=150)
         plt.close(fig)
- 
+
         # Fig 5 — Unemployment by GDP per capita growth quartile
         p2 = panel.dropna(subset=["gdp_per_capita_growth"]).copy()
         p2["gdp_growth_q"] = pd.qcut(
@@ -576,31 +576,31 @@ def save_plots(
         fig.tight_layout()
         fig.savefig(fig_dir / "unemployment_by_gdp_growth_quartile.png", dpi=150)
         plt.close(fig)
- 
+
         print(f"    Plots saved to {fig_dir}/")
- 
+
     except ImportError:
         print("    matplotlib not available — skipping plots.")
- 
- 
+
+
 # ── 10. JSON writer ───────────────────────────────────────────────────────────
- 
+
 def write_json(path: Path, obj: dict) -> None:
     with open(path, "w") as fh:
         json.dump(obj, fh, indent=2)
     print(f"    Written: {path}")
- 
- 
+
+
 # ── MAIN ──────────────────────────────────────────────────────────────────────
- 
+
 def main() -> None:
     print("=" * 65)
     print("ECO 6810 — Can Macroeconomic Indicators Predict Unemployment?")
     print("=" * 65)
- 
+
     panel = load_panel()
     panel, feature_cols = clean(panel)
- 
+
     # ── Primary: random 80/20 split ───────────────────────────────────────────
     print(
         f"\n[3] Train/test split — "
@@ -612,16 +612,16 @@ def main() -> None:
         X, y, test_size=TEST_SIZE, random_state=SEED
     )
     print(f"    Train: {len(X_train):,} obs | Test: {len(X_test):,} obs")
- 
+
     print("\n[3b] Baseline model (mean prediction) ...")
     baseline = run_baseline(y_train, y_test)
     print(
         f"    Baseline R²: {baseline['r2']:.4f} "
         f"(predicts mean = {baseline['train_mean']:.2f}%)"
     )
- 
+
     best_name, best_model, cv_log = select_best_model(X_train, y_train)
- 
+
     print("\n[5] Evaluating on held-out test set ...")
     y_pred     = best_model.predict(X_test)
     primary_r2 = float(r2_score(y_test, y_pred))
@@ -633,12 +633,12 @@ def main() -> None:
     print(f"    MAE              : {mae:.4f} pp")
     print(f"    RMSE             : {rmse:.4f} pp")
     print(f"    PASSED           : {passed}")
- 
+
     # ── Temporal validation ───────────────────────────────────────────────────
     temp_result = temporal_validation(panel, feature_cols)
     y_te_temp   = temp_result.pop("y_te")
     y_pred_temp = temp_result.pop("y_pred_t")
- 
+
     # ── Feature importance ────────────────────────────────────────────────────
     print("\n[6] Feature importance — three methods ...")
     inner = (
@@ -652,7 +652,7 @@ def main() -> None:
         else np.abs(inner.coef_)
     )
     gini = {k: round(float(v), 6) for k, v in zip(feature_cols, gini_vals)}
- 
+
     perm_result = permutation_importance(
         best_model, X_test, y_test,
         n_repeats=10, random_state=SEED, n_jobs=-1,
@@ -665,9 +665,9 @@ def main() -> None:
             perm_result.importances_std,
         )
     }
- 
+
     boot = compute_bootstrap(X_train, y_train, feature_cols)
- 
+
     # GB importance for cross-model comparison
     gb_model = GradientBoostingRegressor(
         n_estimators=200, max_depth=4, learning_rate=0.05,
@@ -678,7 +678,7 @@ def main() -> None:
         k: round(float(v), 6)
         for k, v in zip(feature_cols, gb_model.feature_importances_)
     }
- 
+
     print("    Gini (MDI) top features:")
     for k, v in sorted(gini.items(), key=lambda x: -x[1])[:3]:
         print(f"      {FEATURE_LABELS[k]:<25} {v:.4f}")
@@ -688,7 +688,7 @@ def main() -> None:
     print("    Bootstrap stability (std of Gini across 5 resamples):")
     for k in sorted(boot, key=lambda k: -gini[k]):
         print(f"      {FEATURE_LABELS[k]:<25} mean={boot[k]['mean']:.4f}  std={boot[k]['std']:.4f}")
- 
+
     # ── Hypothesis test ───────────────────────────────────────────────────────
     print("\n[7] Falsifiable hypothesis test ...")
     hyp = test_hypothesis(panel)
@@ -699,7 +699,7 @@ def main() -> None:
         f"    Difference           : {hyp['difference_pp']:.2f} pp "
         f"(need ≥ 1.5) → Supported: {hyp['hypothesis_supported']}"
     )
- 
+
     # ── Stratified estimates ──────────────────────────────────────────────────
     print("\n[8] Stratified estimates ...")
     strat = stratified_estimates(panel)
@@ -708,7 +708,7 @@ def main() -> None:
             f"    {row['quartile']:<12} n={row['n']:>4} "
             f"mean={row['mean_unemp_pct']:.2f}%  SE={row['se']:.3f}"
         )
- 
+
     # ── Write pure JSON outputs ───────────────────────────────────────────────
     print("\n[9] Writing output files ...")
     write_json(OUTPUTS / "primary_metric.json", {
@@ -767,7 +767,7 @@ def main() -> None:
             "gradient_boosting_gini": gb_imp,
         },
     })
- 
+
     # ── Plots ─────────────────────────────────────────────────────────────────
     print("\n[10] Generating plots ...")
     save_plots(
@@ -775,7 +775,7 @@ def main() -> None:
         y_te_temp, y_pred_temp,
         panel, gini, perm, gb_imp, best_name,
     )
- 
+
     # ── Summary ───────────────────────────────────────────────────────────────
     print("\n" + "=" * 65)
     print("RESULTS SUMMARY")
@@ -803,8 +803,7 @@ def main() -> None:
     print("  outputs/figures/temporal_validation.png")
     print("  outputs/figures/unemployment_by_gdp_growth_quartile.png")
     print("=" * 65)
- 
- 
+
+
 if __name__ == "__main__":
     main()
- 
