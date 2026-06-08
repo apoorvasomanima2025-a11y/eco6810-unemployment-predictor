@@ -43,13 +43,13 @@ gdp_per_capita_growth is read directly from the "GDP Per Cap" sheet (NY.GDP.PCAP
 artifact that previously produced a distorted median of −31.28%.
 No source failed. All ten sheets were present and parseable. World Bank aggregate and regional rows (WLD, HIC, SSA, etc.) were excluded using a fixed exclusion list; only sovereign country rows were retained. Panel construction: The outcome variable (Unemployment, 4,484 obs, 187 countries) anchors the merge. All other sheets are joined on country_code and year via an outer merge, then rows missing the outcome are dropped. After dropping 151 rows with more than 3 missing features, the final clean panel contains 4,333 country-year observations across 183 countries. 
 Remaining missing values were filled with each column's global median before modelling:
-%Feature                  Missing filled       Median used
-%gdp_per_capita_growth       29                   2.2088 
-%inflation                   28                   43.6979 
-%industry_value_added        142                  25.0306 
-%trade_openness              436                  74.4142 
-%fdi_inflows                 90                   1.3300 
-%school_enrollment           1,410                38.2059 
+- %Feature                  Missing filled       Median used
+- %gdp_per_capita_growth       29                   2.2088
+- %inflation                   28                   43.6979
+- %industry_value_added        142                  25.0306
+- %trade_openness              436                  74.4142
+- %fdi_inflows                 90                   1.3300
+- %school_enrollment           1,410                38.2059 
 labor_force_part, urban_population_pct, and population_growth required
 no imputation. fdi_inflows was sign-log transformed (np.sign(x) * np.log1p(abs(x))) before modelling to handle heavy right skew
 and occasional negative values from FDI reversals.
