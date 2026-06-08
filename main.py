@@ -8,7 +8,7 @@ Run    : uv run main.py
 Data   : data/Unemployment.xlsx  (World Bank WDI, downloaded 2026-04-08)
 
 Validation strategy (two independent checks):
-  Primary   — random 80/20 split (seed=42), R² = 0.6841
+  Primary   — random 80/20 split (seed=42), R² = 0.6482
   Temporal  — train 2000–2018, test 2019–2023,  R² = 0.3612
               The temporal drop is honest: the test period includes the
               2020 COVID shock, which the model was never trained on.
@@ -20,6 +20,12 @@ Feature importance — three methods for stability:
 
 All three methods agree on the same top-3 features:
   labour_force_part > urban_population_pct > population_growth
+
+IMPORTANT — predictive, not causal:
+  This model predicts unemployment from macro indicators. It does not establish
+  causal effects. Feature importance reflects predictive association, not
+  causal contribution. Do not use this model to claim that changing any one
+  indicator will cause unemployment to move.
 
 Outputs written to outputs/
     primary_metric.json
@@ -345,20 +351,7 @@ def compute_importance(
         )
     }
 
-    # Bootstrap stability (5 resamples)
-    rng       = np.random.default_rng(SEED)
-    boot_rows = []
-    for i in range(5):
-        idx = rng.choice(len(X_train), len(X_train), replace=True)
-        rf_b = RandomForestRegressor(
-            n_estimators=100, max_depth=8, min_samples_leaf=5,
-            random_state=i, n_jobs=-1,
-        )
-        rf_b.fit(X_train[idx], )  # placeholder fixed below
-        boot_rows.append(rf_b.feature_importances_)
-
-    # Redo bootstrap correctly (need y_train — pass it in via closure approach)
-    return gini, perm   # bootstrap computed in main with y_train accessible
+    return gini, perm
 
 
 def compute_bootstrap(
@@ -842,7 +835,7 @@ def main() -> None:
     print(f"  Project PASSED   : {passed}")
     print(
         f"  Hypothesis       : "
-        f"{('Supported' if hyp['hypothesis_supported'] else 'Not supported')} "
+        f"{'Supported' if hyp['hypothesis_supported'] else 'Not supported'} "
         f"(diff = {hyp['difference_pp']:.2f} pp)"
     )
     print("=" * 65)
