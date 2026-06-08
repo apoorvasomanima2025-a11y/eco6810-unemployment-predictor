@@ -6,6 +6,9 @@ File committed to repo: data/Unemployment.xlsx
 Download date: 2026-04-08 (recorded in workbook row 2: "Last Updated Date")
 Licence: Creative Commons Attribution 4.0 International (CC BY 4.0)
 
+One-row proof — India (IND), year 2015
+All values read directly from data/Unemployment.xlsx at Country Code = IND, column 2015. No external call made at probe time.
+
   -      Indicator                                         WB Code     
 - Unemployment  total (% of total labor force)       SL.UEM.TOTL.ZS
 - GDP per capita growth (annual %)                   NY.GDP.PCAP.KD.ZG 
@@ -36,9 +39,7 @@ Full coverage — years 2000–2023, all 217 rows (incl. World Bank aggregates)
 - School enrollment, tertiary (% gross)        SE.TER.ENRR           3087  217
 - Urban Population growth (annual %)           SP.POP.GROW           5207  217
 
-World Bank aggregate and regional rows (WLD, HIC, SSA, etc.) are excluded during
-panel construction using the fixed WB_AGGREGATES list in main.py, leaving
-185 sovereign countries in the final cleaned panel.
+World Bank aggregate and regional rows (WLD, HIC, SSA, etc.) are excluded during panel construction using the fixed WB_AGGREGATES list in main.py, leaving 185 sovereign countries in the final cleaned panel.
 
 Workbook structure
 Header rows: 3 metadata rows before the data header
@@ -59,12 +60,8 @@ Select Download → Excel to get WDI_excel.zip
 Extract and save as data/Unemployment.xlsx in the repo root
 No credentials required
 
-Notes on transformations
+Transformations applied in main.py
 
-fdi_inflows is sign-log transformed (np.sign(x) * np.log1p(abs(x))) before
-modelling to handle heavy right skew and negative reversal values.
-gdp_per_capita_growth is read directly from NY.GDP.PCAP.KD.ZG — not
-derived via pct_change(). This avoids the first-observation artifact that
-produced a distorted median of −31.28% in the 7-indicator version.
-Growth values are winsorised at the 5th / 95th percentile before the hypothesis
-test to remove any remaining rebase artifacts.
+fdi_inflows → sign-log transformed: np.sign(x) * np.log1p(abs(x)) before modelling, to handle heavy right skew and negative FDI reversal values.
+gdp_per_capita_growth → read directly from sheet NY.GDP.PCAP.KD.ZG. This is a pre-computed annual % growth rate from the World Bank. No pct_change() is used, which eliminates the first-observation artifact (distorted median of −31.28%) present in earlier versions of the code.
+Growth is winsorised at the 5th/95th percentile before the hypothesis test to remove any remaining currency-rebase outliers.
